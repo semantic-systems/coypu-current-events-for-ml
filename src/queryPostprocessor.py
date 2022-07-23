@@ -55,6 +55,7 @@ class QueryPostprocessor(ABC):
 
 
 class QueryPostprocessorNotDistinct(QueryPostprocessor):
+    suffix = "_TC"
     @staticmethod
     def postprocess(inData:Dict):
         res = {"data":[]}
@@ -64,6 +65,8 @@ class QueryPostprocessorNotDistinct(QueryPostprocessor):
         return res
 
 class QueryPostprocessorDistinct(QueryPostprocessor):
+    suffix = "_TC_D"
+    
     @staticmethod
     def postprocess(inData:Dict):
         res = {"data":[]}
@@ -81,7 +84,9 @@ class QueryPostprocessorDistinct(QueryPostprocessor):
         print("Row count to postprocess:", len(inData["data"]), "resulting in:", len(res["data"]))
         return res
 
-class QueryPostprocessorSingleLeafLocationEvents(QueryPostprocessor):
+class QueryPostprocessorSingleLeafLocation(QueryPostprocessor):
+    suffix = "_TC_SLL"
+
     @staticmethod
     def postprocess(inData:Dict):
         res = {"data":[]}
@@ -94,7 +99,11 @@ class QueryPostprocessorSingleLeafLocationEvents(QueryPostprocessor):
                 row_dict[row["text"]] = [row]
         
         for rowList in row_dict.values():
-            res_row = QueryPostprocessor._tokenize_and_label(rowList[0])
-            res["data"].append(res_row)
-        print("Row count to postprocess:", len(inData["data"]), "resulting in:", len(res["data"]))
+            if len(rowList) == 1:
+                res_row = QueryPostprocessor._tokenize_and_label(rowList[0])
+                res["data"].append(res_row)
+        print("Row count to postprocess:", len(inData["data"]), 
+            "\ndistinct events:", len(row_dict.values()), 
+            "\nevents with single leaf location:", len(res["data"])
+        )
         return res

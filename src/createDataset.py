@@ -13,8 +13,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from .graph2json import graph2json_mp_host
 from .queryPostprocessor import (QueryPostprocessorDistinct,
-                                 QueryPostprocessorNotDistinct)
+                                 QueryPostprocessorNotDistinct, 
+                                 QueryPostprocessorSingleLeafLocation)
 
+type2qpp = {
+    "not-distinct": QueryPostprocessorNotDistinct, 
+    "distinct": QueryPostprocessorDistinct, 
+    "single-leaf-location": QueryPostprocessorSingleLeafLocation, 
+}
 
 def createDataset(tokenizer, ds_dir:Path, ds_type:str, num_processes:int, force=False):
     def tokenize_and_align_labels(examples):
@@ -43,11 +49,6 @@ def createDataset(tokenizer, ds_dir:Path, ds_type:str, num_processes:int, force=
         return tokenized_inputs
     
     output_ds_path = Path("./dataset/")
-    
-    type2qpp = {
-        "not-distinct": QueryPostprocessorNotDistinct, 
-        "distinct": QueryPostprocessorDistinct, 
-    }
 
     if not exists(output_ds_path / ds_type / "train.json") or force: # only test for one
         # import json ds

@@ -8,25 +8,16 @@ from typing import Dict, List, Union
 
 from rdflib import RDF, RDFS, XSD, BNode, Graph, Literal, Namespace, URIRef
 
-from .queryPostprocessor import (QueryPostprocessorDistinct,
-                                 QueryPostprocessorNotDistinct)
+from .queryPostprocessor import *
 
 includedGraphExtensions = ["ohg"]
 
-def graph2json_mp_host(ds_dir, queryPostprocessor, num_processes=4, force=False) -> List[str]:
+def graph2json_mp_host(ds_dir, queryPostprocessor:QueryPostprocessor, num_processes=4, force=False) -> List[str]:
     ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
     #ds_filepaths = glob(str(ds_dir / "January_2020_base.jsonld"))
     #ds_filepaths.extend(glob(str(ds_dir / "January_2021_base.jsonld")))
     print("Found these base graph files:")
     pprint(ds_filepaths)
-    
-
-    suffices = {
-        None: "",
-        QueryPostprocessorNotDistinct: "_TC",
-        QueryPostprocessorDistinct: "_TC_D"
-    }
-    suffix = suffices[queryPostprocessor]
 
     # parallelize
     def chunks(lst, n):
@@ -45,7 +36,7 @@ def graph2json_mp_host(ds_dir, queryPostprocessor, num_processes=4, force=False)
         for fp in c:
             print("", fp)
         
-    filepaths_with_args = [(fpc, queryPostprocessor, ds_dir, suffix, force) for fpc in filepaths_chunks]
+    filepaths_with_args = [(fpc, queryPostprocessor, ds_dir, force) for fpc in filepaths_chunks]
     
     with Pool(num_processes) as p:
         out_paths = p.starmap(mp_worker, filepaths_with_args)
@@ -62,7 +53,9 @@ def graph2json_mp_host(ds_dir, queryPostprocessor, num_processes=4, force=False)
 
 
     
-def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, suffix, force):
+def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, force):
+    suffix = queryPostprocessor.suffix
+
     out_file_paths = []
     for f in kg_paths_chunk:
         filename = Path(f).parts[-1]
@@ -112,10 +105,7 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, suffix, force):
                     dump(qres, f, separators=(',', ':'))
             
             # query and covert
-            if queryPostprocessor:
-                res = queryPostprocessor.postprocess(qres)
-            else:
-                res = qres
+            res = queryPostprocessor.postprocess(qres)
 
             # save 
             print(current_process().name, "Dump JSON to " + outPath + "...")
