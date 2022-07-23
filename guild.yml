@@ -90,6 +90,6 @@
         target-path: dataset
     win-single-leaf-location:
       - file: dataset\single-leaf-location.json
-        target-path: datase
+        target-path: dataset
     
 

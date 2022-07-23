@@ -102,9 +102,9 @@ if __name__ == '__main__':
         train_size = ds_size - test_size - val_size    
 
         ds_train, ds_val, ds_test = random_split(ds, [train_size, val_size, test_size])
-        print("ds_train:", ds_train)
-        print("ds_val:", ds_val)
-        print("ds_test:", ds_test)
+        print("ds_train:", len(ds_train))
+        print("ds_val:", len(ds_val))
+        print("ds_test:", len(ds_test))
 
         # print(ds["train"][0])
         train_dataloader = DataLoader(
