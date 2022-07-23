@@ -21,33 +21,32 @@ type2qpp = {
     "distinct": QueryPostprocessorDistinct, 
     "single-leaf-location": QueryPostprocessorSingleLeafLocation, 
 }
+def tokenize_and_align_labels(examples, tokenizer, label_key):
+    tokenized_inputs = tokenizer(examples["tokens"], is_split_into_words=True, truncation=True)
+
+    all_labels = examples[label_key]
+    new_labels = []
+    for i, labels in enumerate(all_labels):
+        word_ids = tokenized_inputs.word_ids(i)
+        current_word = None
+        label_ids = []
+        for word_id in word_ids:
+            if word_id is None:
+                # Special token
+                label_ids.append(-100)
+            elif word_id != current_word:
+                # Start of a new word!
+                label_ids.append(labels[word_id])
+            else:
+                # Same word as previous token
+                label_ids.append(-100)
+            current_word = word_id
+        new_labels.append(label_ids)
+
+    tokenized_inputs["labels"] = new_labels
+    return tokenized_inputs
 
 def createDataset(tokenizer, ds_dir:Path, ds_type:str, num_processes:int, force=False):
-    def tokenize_and_align_labels(examples):
-        tokenized_inputs = tokenizer(examples["tokens"], is_split_into_words=True, truncation=True)
-
-        all_labels = examples["labels"]
-        new_labels = []
-        for i, labels in enumerate(all_labels):
-            word_ids = tokenized_inputs.word_ids(i)
-            current_word = None
-            label_ids = []
-            for word_id in word_ids:
-                if word_id is None:
-                    # Special token
-                    label_ids.append(-100)
-                elif word_id != current_word:
-                    # Start of a new word!
-                    label_ids.append(labels[word_id])
-                else:
-                    # Same word as previous token
-                    label_ids.append(-100)
-                current_word = word_id
-            new_labels.append(label_ids)
-
-        tokenized_inputs["labels"] = new_labels
-        return tokenized_inputs
-    
     output_ds_path = Path("./dataset/")
 
     if not exists(output_ds_path / f"{ds_type}.json") or force: # only test for one
@@ -63,7 +62,8 @@ def createDataset(tokenizer, ds_dir:Path, ds_type:str, num_processes:int, force=
         ds = load_dataset('json', data_files=dataset_file_paths, field="data") # , features=features
 
         # tokenize data
-        ds = ds.map(tokenize_and_align_labels, batched=True, remove_columns="tokens")
+        ds = ds.map(tokenize_and_align_labels, batched=True, remove_columns="tokens", 
+            fn_kwargs={"tokenizer":tokenizer, "label_key": "labels"})
 
         print("Dataset:", ds)
 
