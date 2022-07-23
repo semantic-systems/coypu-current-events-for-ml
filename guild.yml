@@ -73,47 +73,23 @@
     
   resources:
     distinct:
-      - file: dataset/distinct/train.json
-        target-path: dataset/distinct
-      - file: dataset/distinct/validation.json
-        target-path: dataset/distinct
-      - file: dataset/distinct/test.json
-        target-path: dataset/distinct
+      - file: dataset/distinct.json
+        target-path: dataset
     not-distinct:
-      - file: dataset/not-distinct/train.json
-        target-path: dataset/not-distinct
-      - file: dataset/not-distinct/validation.json
-        target-path: dataset/not-distinct
-      - file: dataset/not-distinct/test.json
-        target-path: dataset/not-distinct
+      - file: dataset/not-distinct.json
+        target-path: dataset
     single-leaf-location:
-      - file: dataset/single-leaf-location/train.json
-        target-path: dataset/single-leaf-location
-      - file: dataset/single-leaf-location/validation.json
-        target-path: dataset/single-leaf-location
-      - file: dataset/single-leaf-location/test.json
-        target-path: dataset/single-leaf-location
+      - file: dataset/single-leaf-location.json
+        target-path: dataset
     
     win-distinct:
-      - file: dataset\distinct\train.json
-        target-path: dataset\distinct
-      - file: dataset\distinct\validation.json
-        target-path: dataset\distinct
-      - file: dataset\distinct\test.json
-        target-path: dataset\distinct
+      - file: dataset\distinct.json
+        target-path: dataset
     win-not-distinct:
-      - file: dataset\not-distinct\train.json
-        target-path: dataset\not-distinct
-      - file: dataset\not-distinct\validation.json
-        target-path: dataset\not-distinct
-      - file: dataset\not-distinct\test.json
-        target-path: dataset\not-distinct
+      - file: dataset\not-distinct.json
+        target-path: dataset
     win-single-leaf-location:
-      - file: dataset\single-leaf-location\train.json
-        target-path: dataset\single-leaf-location
-      - file: dataset\single-leaf-location\validation.json
-        target-path: dataset\single-leaf-location
-      - file: dataset\single-leaf-location\test.json
-        target-path: dataset\single-leaf-location
+      - file: dataset\single-leaf-location.json
+        target-path: datase
     
 

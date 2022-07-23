@@ -50,7 +50,7 @@ def createDataset(tokenizer, ds_dir:Path, ds_type:str, num_processes:int, force=
     
     output_ds_path = Path("./dataset/")
 
-    if not exists(output_ds_path / ds_type / "train.json") or force: # only test for one
+    if not exists(output_ds_path / f"{ds_type}.json") or force: # only test for one
         # import json ds
         dataset_file_paths = graph2json_mp_host(ds_dir, type2qpp[ds_type], num_processes, force=force)
 
@@ -65,50 +65,31 @@ def createDataset(tokenizer, ds_dir:Path, ds_type:str, num_processes:int, force=
         # tokenize data
         ds = ds.map(tokenize_and_align_labels, batched=True, remove_columns="tokens")
 
-        print("Pre-split dataset:", ds)
+        print("Dataset:", ds)
 
-        # split data
-        test_size = 0.1
-        val_size = 0.1
-        ds = ds["train"].train_test_split(test_size=val_size) #, shuffle=True
-        ds_val = ds["test"]
-        ds = ds["train"].train_test_split(test_size=test_size*(1 / 1-val_size)) 
-        ds_test = ds["test"]
-        ds_train = ds["train"]
-
-        # write
-        makedirs(str(output_ds_path / ds_type), exist_ok=True)
-        ds_val.to_json(str(output_ds_path / ds_type / "validation.json"))
-        ds_test.to_json(str(output_ds_path / ds_type / "test.json"))
-        ds_train.to_json(str(output_ds_path / ds_type / "train.json"))
+        out_path = str(output_ds_path / f"{ds_type}.json")
+        print(f"Save dataset to {out_path}")
+        ds["train"].to_json(out_path)
 
 
+class CurrentEventsDataset(Dataset):
+    def __init__(self, filename):
+        with open("dataset/" + filename, "r") as f:
+            data = []
+            for line in f:
+                data.append(json.loads(line))
+            df = DataFrame.from_records(data)
+        self.df = df
 
-def getTorchDataset(ds_type):
-    class CurrentEventsDataset(Dataset):
-        def __init__(self, filename):
-            with open("dataset/" + filename, "r") as f:
-                data = []
-                for line in f:
-                    data.append(json.loads(line))
-                df = DataFrame.from_records(data)
-            self.df = df
+    def __len__(self):
+        return self.df.shape[0]
 
-        def __len__(self):
-            return self.df.shape[0]
-
-        def __getitem__(self, idx):
-            return {
-                "labels": self.df.iloc[idx]["labels"], 
-                "input_ids": self.df.iloc[idx]["input_ids"], 
-                "attention_mask": self.df.iloc[idx]["attention_mask"]
-            }
-        def __repr__(self):
-            return "CurrentEventsDataset: len=" + str(self.__len__())
-    
-    return DatasetDict({
-        "train" : CurrentEventsDataset(ds_type + "/train.json"),
-        "validation" : CurrentEventsDataset(ds_type + "/validation.json"),
-        "test" : CurrentEventsDataset(ds_type + "/test.json"),
-    })
+    def __getitem__(self, idx):
+        return {
+            "labels": self.df.iloc[idx]["labels"], 
+            "input_ids": self.df.iloc[idx]["input_ids"], 
+            "attention_mask": self.df.iloc[idx]["attention_mask"]
+        }
+    def __repr__(self):
+        return "CurrentEventsDataset: len=" + str(self.__len__())
     

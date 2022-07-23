@@ -6,14 +6,14 @@ import torch
 from accelerate import Accelerator
 from seqeval.metrics import f1_score, accuracy_score, precision_score, recall_score
 from torch.optim import AdamW
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 from transformers import (AutoModelForTokenClassification, AutoTokenizer,
                           DataCollatorForTokenClassification, Trainer,
                           TrainingArguments, get_scheduler)
 
-from src.createDataset import createDataset, getTorchDataset, type2qpp
+from src.createDataset import createDataset, type2qpp, CurrentEventsDataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -65,24 +65,33 @@ if __name__ == '__main__':
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
 
     # load dataset
-    ds = getTorchDataset(args.ds_type)
+    ds = CurrentEventsDataset(args.ds_type + ".json")
+    print("Dataset:", ds)
+
+    # split data
+    ds_size = len(ds)
+    test_size = int(0.1 * ds_size)
+    val_size = int(0.1 * ds_size)
+    train_size = ds_size - test_size - val_size    
+
+    ds_train, ds_val, ds_test = random_split(ds, [train_size, val_size, test_size])
+    print("ds_train:", ds_train)
+    print("ds_val:", ds_val)
+    print("ds_test:", ds_test)
+
     # print(ds["train"][0])
     train_dataloader = DataLoader(
-        ds["train"],
+        ds_train,
         shuffle=shuffle,
         collate_fn=data_collator,
         batch_size=batch_size,
     )
     eval_dataloader = DataLoader(
-        ds["validation"],
+        ds_val,
         collate_fn=data_collator,
         batch_size=batch_size,
     )
-    
 
-    print(ds)
-    for r in ds["train"][0]:
-        print(r)
 
     # load model
     label_names = ['O', 'B-LOC', 'I-LOC']
