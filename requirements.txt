@@ -1,0 +1,13 @@
+transformers
+datasets
+numpy
+tqdm
+SPARQLWrapper
+rdflib
+seqeval
+pandas
+torch
+accelerate
+tqdm
+mlflow
+tensorboard
