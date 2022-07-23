@@ -35,6 +35,30 @@
       flags:
         ds_type: single-leaf-location
     
+    win-train-d:
+      main: main
+      requires:
+       - win-distinct
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: distinct
+      
+    win-train-nd:
+      main: main
+      requires:
+       - win-not-distinct
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: not-distinct
+      
     win-train-sll:
       main: main
       requires:
