@@ -1,42 +1,95 @@
-train:
-  main: main
-  default: yes
-  requires: 
-    - file: dataset/distinct/train.json
-      target-path: dataset/distinct
-    - file: dataset/distinct/validation.json
-      target-path: dataset/distinct
-    - file: dataset/distinct/test.json
-      target-path: dataset/distinct
-    # - file: dataset/not-distinct/train.json
-    #   target-path: dataset/not-distinct
-    # - file: dataset/not-distinct/validation.json
-    #   target-path: dataset/not-distinct
-    # - file: dataset/not-distinct/test.json
-    #   target-path: dataset/not-distinct
-  sourcecode:
-    - exclude: '*.lst'
-    - exclude: '*.json'
-    - exclude: '*.ipynb'
-  flags-import: all
+- operations:
+    train-d:
+      main: main
+      requires:
+       - distinct
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: distinct
+      
+    train-nd:
+      main: main
+      requires:
+       - not-distinct
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: not-distinct
+    
+    train-sll:
+      main: main
+      requires:
+       - single-leaf-location
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: single-leaf-location
+    
+    win-train-sll:
+      main: main
+      requires:
+       - win-single-leaf-location
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: single-leaf-location
+    
+  resources:
+    distinct:
+      - file: dataset/distinct/train.json
+        target-path: dataset/distinct
+      - file: dataset/distinct/validation.json
+        target-path: dataset/distinct
+      - file: dataset/distinct/test.json
+        target-path: dataset/distinct
+    not-distinct:
+      - file: dataset/not-distinct/train.json
+        target-path: dataset/not-distinct
+      - file: dataset/not-distinct/validation.json
+        target-path: dataset/not-distinct
+      - file: dataset/not-distinct/test.json
+        target-path: dataset/not-distinct
+    single-leaf-location:
+      - file: dataset/single-leaf-location/train.json
+        target-path: dataset/single-leaf-location
+      - file: dataset/single-leaf-location/validation.json
+        target-path: dataset/single-leaf-location
+      - file: dataset/single-leaf-location/test.json
+        target-path: dataset/single-leaf-location
+    
+    win-distinct:
+      - file: dataset\distinct\train.json
+        target-path: dataset\distinct
+      - file: dataset\distinct\validation.json
+        target-path: dataset\distinct
+      - file: dataset\distinct\test.json
+        target-path: dataset\distinct
+    win-not-distinct:
+      - file: dataset\not-distinct\train.json
+        target-path: dataset\not-distinct
+      - file: dataset\not-distinct\validation.json
+        target-path: dataset\not-distinct
+      - file: dataset\not-distinct\test.json
+        target-path: dataset\not-distinct
+    win-single-leaf-location:
+      - file: dataset\single-leaf-location\train.json
+        target-path: dataset\single-leaf-location
+      - file: dataset\single-leaf-location\validation.json
+        target-path: dataset\single-leaf-location
+      - file: dataset\single-leaf-location\test.json
+        target-path: dataset\single-leaf-location
+    
 
-train-win:
-  main: main
-  requires: 
-    - file: dataset/distinct/train.json
-      target-path: dataset\distinct
-    - file: dataset/distinct/validation.json
-      target-path: dataset\distinct
-    - file: dataset/distinct/test.json
-      target-path: dataset\distinct
-    # - file: dataset/not-distinct/train.json
-    #   target-path: dataset\not-distinct
-    # - file: dataset/not-distinct/validation.json
-    #   target-path: dataset\not-distinct
-    # - file: dataset/not-distinct/test.json
-    #   target-path: dataset\not-distinct
-  sourcecode:
-    - exclude: '*.lst'
-    - exclude: '*.json'
-    - exclude: '*.ipynb'
-  flags-import: all

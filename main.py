@@ -13,10 +13,11 @@ from transformers import (AutoModelForTokenClassification, AutoTokenizer,
                           DataCollatorForTokenClassification, Trainer,
                           TrainingArguments, get_scheduler)
 
-from src.createDataset import createDataset, getTorchDataset
+from src.createDataset import createDataset, getTorchDataset, type2qpp
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
     # store_true
     parser.add_argument("-cd", '--create_dataset', action='store_true',
         help="Create dataset for ml from knowledge graph dataset and exit.")
@@ -26,9 +27,9 @@ if __name__ == '__main__':
 
     # store
     parser.add_argument('--kg_ds_dir', action='store', help="Directory of knowledge graph dataset.",
-                        default="../Current-Events-Dataset/dataset/")
+                        default="../current-events-to-kg/dataset/")
     
-    parser.add_argument('--ds_type', action='store', type=str, default="distinct")
+    parser.add_argument('--ds_type', action='store', type=str, default="distinct", choices=list(type2qpp.keys()))
 
     parser.add_argument('--num_processes', action='store', type=int, default=4)
 
