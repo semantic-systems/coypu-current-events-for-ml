@@ -1,13 +1,9 @@
-transformers
+accelerate
 datasets
 numpy
-tqdm
-SPARQLWrapper
+pandas
 rdflib
 seqeval
-pandas
 torch
-accelerate
 tqdm
-mlflow
-tensorboard
+transformers
