@@ -10,7 +10,7 @@ from rdflib import RDF, RDFS, XSD, BNode, Graph, Literal, Namespace, URIRef
 
 from .queryPostprocessor import *
 
-includedGraphExtensions = ["ohg"]
+includedGraphExtensions = [] # "ohg", "osm", "raw"
 
 def graph2json_mp_host(ds_dir, queryPostprocessor:QueryPostprocessor, num_processes=4, force=False) -> List[str]:
     ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
