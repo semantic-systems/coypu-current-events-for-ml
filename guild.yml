@@ -35,6 +35,19 @@
       flags:
         ds_type: single-leaf-location
     
+    train-el:
+      main: main -el
+      requires:
+       - entity-linking
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: entity-linking
+    
+
     win-train-d:
       main: main
       requires:
@@ -70,6 +83,18 @@
       flags-import: all
       flags:
         ds_type: single-leaf-location
+  
+    win-train-el:
+      main: main -el
+      requires:
+       - win-entity-linking
+      sourcecode:
+        - exclude: '*.lst'
+        - exclude: '*.json'
+        - exclude: '*.ipynb'
+      flags-import: all
+      flags:
+        ds_type: entity-linking
     
   resources:
     distinct:
@@ -81,6 +106,9 @@
     single-leaf-location:
       - file: dataset/single-leaf-location.json
         target-path: dataset
+    entity-linking:
+      - file: dataset/entity-linking.json
+        target-path: dataset
     
     win-distinct:
       - file: dataset\distinct.json
@@ -90,6 +118,9 @@
         target-path: dataset
     win-single-leaf-location:
       - file: dataset\single-leaf-location.json
+        target-path: dataset
+    win-entity-linking:
+      - file: dataset\entity-linking.json
         target-path: dataset
     
 
