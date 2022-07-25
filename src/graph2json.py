@@ -1,6 +1,6 @@
-from glob import glob
 from json import dump, load
 from multiprocessing import Pool, current_process
+from os import makedirs
 from os.path import exists
 from pathlib import Path
 from pprint import pprint
@@ -12,8 +12,8 @@ from .queryPostprocessor import *
 
 includedGraphExtensions = [] # "ohg", "osm", "raw"
 
-def graph2json_mp_host(ds_dir, queryPostprocessor:QueryPostprocessor, num_processes=4, force=False) -> List[str]:
-    ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
+def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocessor, 
+        num_processes=4, forceExeptQuery=False, force=False, qp_kwargs={}) -> List[str]:
     #ds_filepaths = glob(str(ds_dir / "January_2020_base.jsonld"))
     #ds_filepaths.extend(glob(str(ds_dir / "January_2021_base.jsonld")))
     print("Found these base graph files:")
@@ -36,7 +36,7 @@ def graph2json_mp_host(ds_dir, queryPostprocessor:QueryPostprocessor, num_proces
         for fp in c:
             print("", fp)
         
-    filepaths_with_args = [(fpc, queryPostprocessor, ds_dir, force) for fpc in filepaths_chunks]
+    filepaths_with_args = [(fpc, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs) for fpc in filepaths_chunks]
     
     with Pool(num_processes) as p:
         out_paths = p.starmap(mp_worker, filepaths_with_args)
@@ -53,7 +53,7 @@ def graph2json_mp_host(ds_dir, queryPostprocessor:QueryPostprocessor, num_proces
 
 
     
-def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, force):
+def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs):
     suffix = queryPostprocessor.suffix
 
     out_file_paths = []
@@ -67,7 +67,7 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, force):
 
         baseQueryPath = str(ds_dir / (prefix + ".json"))
 
-        if exists(outPath) and not force:
+        if exists(outPath) and not forceExeptQuery and not force:
             print(current_process().name, "File " + outPath + " exists.")    
         else:
             # query or use cache
@@ -105,7 +105,7 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, force):
                     dump(qres, f, separators=(',', ':'))
             
             # query and covert
-            res = queryPostprocessor.postprocess(qres)
+            res = queryPostprocessor.postprocess(qres, **qp_kwargs)
 
             # save 
             print(current_process().name, "Dump JSON to " + outPath + "...")

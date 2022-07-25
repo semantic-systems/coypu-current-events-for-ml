@@ -16,19 +16,31 @@ from transformers import (AutoModelForTokenClassification, AutoTokenizer,
 from src.createDataset import CurrentEventsDataset, createDataset, type2qpp, tokenize_and_align_labels
 from src.metrics import calculate_metrics, postprocess
 from src.eval_conll2003 import eval_conll2003
+from src.entity_linking import load_loc2entity, create_entity_list
+
+from os.path import abspath, split
 
 if __name__ == '__main__':
+    basedir, _ = split(abspath(__file__))
+    basedir = Path(basedir)
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # store_true
     parser.add_argument("-cd", '--create_dataset', action='store_true',
         help="Create dataset for ml from knowledge graph dataset and exit.")
 
+    parser.add_argument("-feq", '--force_exept_query', action='store_true',
+        help="Ignore all caches exept query cache when creating dataset.")
+
     parser.add_argument("-f", '--force', action='store_true',
-        help="Ignore cache when creating dataset.")
+        help="Ignore all caches when creating dataset.")
  
     parser.add_argument("--eval_conll", action='store_true',
         help="Evaluate with conll2003.")
+    
+    parser.add_argument("-el", "--entity_linking", action='store_true',
+        help="Train for entity linking.")
 
     # store
     parser.add_argument('--kg_ds_dir', action='store', help="Directory of knowledge graph dataset.",
@@ -36,7 +48,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--ds_type', action='store', type=str, default="distinct", choices=list(type2qpp.keys()))
 
-    parser.add_argument('--num_processes', action='store', type=int, default=4)
+    parser.add_argument("-np", '--num_processes', action='store', type=int, default=4)
 
     parser.add_argument('--model_checkpoint', action='store', default="distilbert-base-uncased")
     
@@ -48,7 +60,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--learning_rate', action='store', type=float, default=3e-5)
 
-    parser.add_argument('--eval_steps', action='store', type=int, default=100)
+    parser.add_argument('--eval_steps', action='store', type=int, default=200)
                         
     
     args = parser.parse_args()
@@ -62,14 +74,29 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
 
     if args.create_dataset:
-        createDataset(tokenizer, Path(args.kg_ds_dir), args.ds_type, args.num_processes, args.force)
+        createDataset(
+            basedir, 
+            tokenizer, 
+            basedir / args.kg_ds_dir, 
+            args.ds_type, 
+            args.num_processes, 
+            args.force_exept_query, 
+            args.force
+        )
         print("Done!")
         quit()
 
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
 
     # load model
-    label_names = ['O', 'B-LOC', 'I-LOC']
+    if args.entity_linking:
+        loc2entity = load_loc2entity(basedir)
+        label_names = ["O"]
+        label_names.extend(create_entity_list(loc2entity))
+        
+    else:
+        label_names = ['O', 'B-LOC', 'I-LOC']
+    
     id2label = {i: label for i, label in enumerate(label_names)}
     label2id = {v: k for k, v in id2label.items()}
 
@@ -81,8 +108,8 @@ if __name__ == '__main__':
             label2id=label2id,
         )
     
-    # load stuff
     model = model_init()
+
     
     if args.eval_conll:
         # evaluate model
@@ -119,7 +146,10 @@ if __name__ == '__main__':
             batch_size=batch_size,
         )
 
-        optimizer = AdamW(model.parameters(), lr=args.learning_rate)
+        optimizer = AdamW(
+            model.parameters(), 
+            lr=args.learning_rate
+        )
 
         accelerator = Accelerator()
         model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
@@ -199,29 +229,3 @@ if __name__ == '__main__':
             tokenizer.save_pretrained(output_dir)
 
         # end of fine-tuning
-
-
-
-# def metrics(self, pred, labels, mode, epoch):
-    #     def calculate_metrics(pred_tags, gt_tags):
-    #         f1 = f1_score(pred_tags, gt_tags)*100
-    #         ppv = precision_score(pred_tags, gt_tags)*100
-    #         sen = recall_score(pred_tags, gt_tags)*100
-    #         acc = accuracy_score(pred_tags, gt_tags)*100
-    #         return {'f1':f1, 'precision':ppv, 'recall':sen, 'accuracy':acc}
-        
-    #     # get metrics on all labels
-    #     metric = {}
-    #     metric['all'] = calculate_metrics(pred, labels)
-    #     for m in ['accuracy', 'f1', 'precision', 'recall']:
-    #         self.tsboard[mode].add_scalar('metrics/{}'.format(m), metric['all'][m], epoch)
-            
-    #     # get metrics on single label
-    #     metric['individual'] = {}
-    #     for tag in self.label2id.keys():
-    #         if tag != 'O' and tag != self.pad_token and tag in labels:
-    #             pred = [p for p, g in zip(pred, labels) if p==tag or g==tag]
-    #             gt = [g for p, g in zip(pred, labels) if p==tag or g==tag]
-    #             metric['individual'][tag] = calculate_metrics(pred, gt)
-            
-    #     return metric
