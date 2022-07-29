@@ -95,6 +95,7 @@
       flags-import: all
       flags:
         ds_type: entity-linking
+        entity-linking: yes
     
   resources:
     distinct:
