@@ -35,17 +35,17 @@
       flags:
         ds_type: single-leaf-location
     
-    train-el:
-      main: main -el
+    train-ell:
+      main: main
       requires:
-       - entity-linking
+       - entity-linking-location
       sourcecode:
         - exclude: '*.lst'
         - exclude: '*.json'
         - exclude: '*.ipynb'
       flags-import: all
       flags:
-        ds_type: entity-linking
+        ds_type: entity-linking-location
     
 
     win-train-d:
@@ -84,17 +84,17 @@
       flags:
         ds_type: single-leaf-location
   
-    win-train-el:
-      main: main -el
+    win-train-ell:
+      main: main
       requires:
-       - win-entity-linking
+       - win-entity-linking-location
       sourcecode:
         - exclude: '*.lst'
         - exclude: '*.json'
         - exclude: '*.ipynb'
       flags-import: all
       flags:
-        ds_type: entity-linking
+        ds_type: entity-linking-location
         entity-linking: yes
     
   resources:
@@ -107,9 +107,11 @@
     single-leaf-location:
       - file: dataset/single-leaf-location.json
         target-path: dataset
-    entity-linking:
+    entity-linking-location:
       - file: dataset/entity-linking.json
         target-path: dataset
+      - file: cache/loc2entity.json
+        target-path: cache
     
     win-distinct:
       - file: dataset\distinct.json
@@ -120,8 +122,9 @@
     win-single-leaf-location:
       - file: dataset\single-leaf-location.json
         target-path: dataset
-    win-entity-linking:
+    win-entity-linking-location:
       - file: dataset\entity-linking.json
         target-path: dataset
-    
+      - file: cache\loc2entity.json
+        target-path: cache
 
