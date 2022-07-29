@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-
+from pprint import pprint
 from .entity_linking import create_entity_list
 
 class QueryPostprocessor(ABC):
@@ -9,7 +9,7 @@ class QueryPostprocessor(ABC):
     def postprocess(qres, **kwargs):
         pass
 
-    def _tokenize_and_label(row):
+    def _tokenize_and_label_location_row(row):
         punctuations = [".", ",", ":", ";"]
 
         textTokens = []
@@ -55,6 +55,62 @@ class QueryPostprocessor(ABC):
 
         return {"tokens":textTokens, "labels":labels, "location": location}
     
+    def _tokenize_and_label_entity_linking(rowList):
+        punctuations = [".", ",", ":", ";"]
+        nilLabel = "NIL"
+        textTokens = []
+        labels = []
+
+        text = str(rowList[0]["text"])
+
+        links=[]
+        for row in rowList:
+            links.append((
+                str(row["article"]),
+                int(row["begin"]) + int(row["s_begin"]), 
+                int(row["end"]) + int(row["s_begin"])
+            ))
+
+        # split text into tokens and label them
+        tok = ""
+        for i,char in enumerate(text):
+            
+            # check if char is on boundary or inside of a link
+            link_begins_next = False
+            link_ended = False
+            label = "NIL"
+            for entity, begin, end in links:
+                link_begins_next |= (i+1 == begin)
+                link_ended |= (i == end)
+                if i >= begin and i <= end:
+                    label = entity
+
+            if link_begins_next or link_ended or char.isspace() or char in punctuations:
+                # end of token
+                if link_begins_next:
+                    tok += char
+
+                tok_candidate = tok.strip()
+                if len(tok_candidate) >= 1:
+                    textTokens.append(tok_candidate)
+                    labels.append(label)
+
+                if char in punctuations:
+                    # own token for punctuations
+                    textTokens.append(char)
+                    labels.append(nilLabel)
+
+                tok = ""
+
+                if link_ended and char not in punctuations:
+                    tok += char
+            else:
+                # char is mid-token
+                tok += char
+        
+        assert len(labels) == len(textTokens)
+            
+        return {"tokens":textTokens, "labels":labels}
 
 
 class QueryPostprocessorNotDistinct(QueryPostprocessor):
@@ -63,7 +119,7 @@ class QueryPostprocessorNotDistinct(QueryPostprocessor):
     def postprocess(inData:Dict, **kwargs):
         res = {"data":[]}
         for row in inData["data"]:
-            res_row = QueryPostprocessor._tokenize_and_label(row)
+            res_row = QueryPostprocessor._tokenize_and_label_location_row(row)
             res["data"].append(res_row)
         return res
 
@@ -82,7 +138,7 @@ class QueryPostprocessorDistinct(QueryPostprocessor):
                 row_dict[row["text"]] = [row]
         
         for rowList in row_dict.values():
-            res_row = QueryPostprocessor._tokenize_and_label(rowList[0])
+            res_row = QueryPostprocessor._tokenize_and_label_location_row(rowList[0])
             res["data"].append(res_row)
         print("Row count to postprocess:", len(inData["data"]), "resulting in:", len(res["data"]))
         return res
@@ -103,7 +159,7 @@ class QueryPostprocessorSingleLeafLocation(QueryPostprocessor):
         
         for rowList in row_dict.values():
             if len(rowList) == 1:
-                res_row = QueryPostprocessor._tokenize_and_label(rowList[0])
+                res_row = QueryPostprocessor._tokenize_and_label_location_row(rowList[0])
                 res["data"].append(res_row)
         print("Row count to postprocess:", len(inData["data"]), 
             "\ndistinct events:", len(row_dict.values()), 
@@ -112,7 +168,7 @@ class QueryPostprocessorSingleLeafLocation(QueryPostprocessor):
         return res
 
 class QueryPostprocessorSingleLeafLocationEntityLinking(QueryPostprocessor):
-    suffix = "_TC_EL"
+    suffix = "_TC_LOC_EL"
 
     @staticmethod
     def postprocess(inData:Dict, loc2entity:Dict):
@@ -131,7 +187,7 @@ class QueryPostprocessorSingleLeafLocationEntityLinking(QueryPostprocessor):
         for rowList in row_dict.values():
             if len(rowList) == 1:
                 row = rowList[0]
-                row = QueryPostprocessor._tokenize_and_label(row)
+                row = QueryPostprocessor._tokenize_and_label_location_row(row)
                 entity = entity2id[loc2entity[ row["location"] ]]
                 
                 
@@ -146,3 +202,75 @@ class QueryPostprocessorSingleLeafLocationEntityLinking(QueryPostprocessor):
             "\nevents with single leaf location (entity):", len(res["data"])
         )
         return res
+
+class QueryPostprocessorEntityLinking(QueryPostprocessor):
+    suffix = "_TC_EL"
+
+    @staticmethod
+    def postprocess(inData:Dict):
+        res = {"data":[]}        
+
+        row_dict = {}
+        for row in inData["data"]:
+            if row["text"] in row_dict:
+                row_dict[row["text"]].append(row)
+            else:
+                row_dict[row["text"]] = [row]
+        
+        for rowList in row_dict.values():
+            merged_row = {}
+            for row in rowList:
+                r = QueryPostprocessor._tokenize_and_label_entity_linking(rowList)
+                
+                if "tokens" not in merged_row:
+                    merged_row["tokens"] = r["tokens"]
+
+                if "labels" not in merged_row:
+                    merged_row["labels"] = r["labels"]
+                else:
+                    assert len(merged_row["labels"]) == len(r["labels"])
+                    for i,l in enumerate(r["labels"]):
+                        if l != merged_row["labels"][i] and l != "NIL":
+                            merged_row["labels"][i] = l
+                
+            res["data"].append(merged_row)
+        print("Row count to postprocess:", len(inData["data"]), 
+            "\ndistinct events:", len(row_dict.values()), 
+            "\nevents with linked entity:", len(res["data"])
+        )
+        return res
+
+class QueryPostprocessorEntityLinkingUntokenized(QueryPostprocessor):
+    suffix = "_EL"
+
+    @staticmethod
+    def postprocess(inData:Dict):
+        res = {"data":[]}
+
+        row_dict = {}
+        for row in inData["data"]:
+            if row["text"] in row_dict:
+                row_dict[row["text"]].append(row)
+            else:
+                row_dict[row["text"]] = [row]
+        
+        for rowList in row_dict.values():
+            merged_row = {
+                "text": rowList[0]["text"],
+                "mentions": [],
+            }
+            for row in rowList:
+                begin = row["begin"] + row["s_begin"]
+                end = row["end"] + row["s_begin"]
+                mention = row["linktext"]
+                entity = row["article"]
+                merged_row["mentions"].append((begin, end, mention, entity))                
+                
+            res["data"].append(merged_row)
+
+        print("Row count to postprocess:", len(inData["data"]), 
+            "\ndistinct events:", len(row_dict.values()), 
+            "\nevents with linked entity:", len(res["data"])
+        )
+        return res
+    

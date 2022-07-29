@@ -12,7 +12,7 @@ from .queryPostprocessor import *
 
 includedGraphExtensions = [] # "ohg", "osm", "raw"
 
-def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocessor, 
+def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocessor, queryFunc, 
         num_processes=4, forceExeptQuery=False, force=False, qp_kwargs={}) -> List[str]:
     #ds_filepaths = glob(str(ds_dir / "January_2020_base.jsonld"))
     #ds_filepaths.extend(glob(str(ds_dir / "January_2021_base.jsonld")))
@@ -36,7 +36,7 @@ def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocess
         for fp in c:
             print("", fp)
         
-    filepaths_with_args = [(fpc, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs) for fpc in filepaths_chunks]
+    filepaths_with_args = [(fpc, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs, queryFunc) for fpc in filepaths_chunks]
     
     with Pool(num_processes) as p:
         out_paths = p.starmap(mp_worker, filepaths_with_args)
@@ -53,7 +53,7 @@ def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocess
 
 
     
-def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs):
+def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs, queryFunc):
     suffix = queryPostprocessor.suffix
 
     out_file_paths = []
@@ -62,18 +62,19 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
         splitted = filename.split("_")
         prefix = "_".join(splitted[0:2])
 
-        outName = prefix + suffix + ".json"
-        outPath = str(ds_dir / outName)
+        out_file_name = prefix + suffix + ".json" # eg May_2020_TC_D.json
+        out_file_path = str(ds_dir / out_file_name)
 
-        baseQueryPath = str(ds_dir / (prefix + ".json"))
+        base_query_dir = ds_dir / str(queryFunc.__name__)
+        base_query_file_path = str(base_query_dir / (prefix + ".json"))
 
-        if exists(outPath) and not forceExeptQuery and not force:
-            print(current_process().name, "File " + outPath + " exists.")    
+        if exists(out_file_path) and not forceExeptQuery and not force:
+            print(current_process().name, "File " + out_file_path + " exists.")    
         else:
             # query or use cache
-            if exists(baseQueryPath) and not force:
-                print(current_process().name, "Load cached query result from" + baseQueryPath + "...")
-                with open(baseQueryPath, mode='r', encoding="utf-8") as f:
+            if exists(base_query_file_path) and not force:
+                print(current_process().name, "Load cached query result from" + base_query_file_path + "...")
+                with open(base_query_file_path, mode='r', encoding="utf-8") as f:
                     qres = load(f)
             else:
                 g = Graph()
@@ -97,27 +98,28 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
                     print(current_process().name, "Parsing " + ePath + "...")
                     g.parse(ePath)
                 
-                qres = queryGraph(g)
+                qres = queryFunc(g)
 
                 # cache base query 
-                print(current_process().name, "Cache query to" + baseQueryPath + "...")
-                with open(baseQueryPath, mode='w', encoding="utf-8") as f:
+                print(current_process().name, "Cache query to" + base_query_file_path + "...")
+                makedirs(base_query_dir, exist_ok=True)
+                with open(base_query_file_path, mode='w', encoding="utf-8") as f:
                     dump(qres, f, separators=(',', ':'))
             
             # query and covert
             res = queryPostprocessor.postprocess(qres, **qp_kwargs)
 
             # save 
-            print(current_process().name, "Dump JSON to " + outPath + "...")
-            with open(outPath, mode='w', encoding="utf-8") as f:
+            print(current_process().name, "Dump JSON to " + out_file_path + "...")
+            with open(out_file_path, mode='w', encoding="utf-8") as f:
                 dump(res, f, separators=(',', ':'))
 
-        out_file_paths.append(outPath)
+        out_file_paths.append(out_file_path)
     return out_file_paths
 
     
 
-def queryGraph(g:Graph) -> Dict[str,List]:
+def queryGraphLocations(g:Graph) -> Dict[str,List]:
     print(current_process().name, "Running query ...")
 
     q = """#PREFIX n: <http://data.coypu.org/>
@@ -158,6 +160,37 @@ SELECT DISTINCT ?text ?l_loc ?s_begin ?l_loc_begin ?l_loc_end WHERE{
         rows["data"].append({
             "text": row.text, "s_begin": row.s_begin, "location": row.l_loc, 
             "begin": row.l_loc_begin, "end": row.l_loc_end
+        })
+    
+    return rows
+
+
+
+
+def queryGraphEntitys(g:Graph) -> Dict[str,List]:
+    print(current_process().name, "Running query ...")
+
+    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a WHERE{
+    ?e rdf:type n:Event.
+    ?e nif:isString ?text.
+    ?e n:hasSentence ?s.
+
+    ?s n:hasLink ?l;
+        nif:beginIndex ?s_begin.
+
+    ?l n:text ?linktext;
+        nif:beginIndex ?begin;
+        nif:endIndex ?end;
+        n:references ?a.
+}"""
+    res = g.query(q)
+
+    rows = {}
+    rows["data"] = []
+    for row in res:
+        rows["data"].append({
+            "text": row.text, "linktext": row.linktext, "s_begin": row.s_begin, 
+            "begin": row.begin, "end": row.end, "article": row.a
         })
     
     return rows

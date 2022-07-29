@@ -13,7 +13,7 @@ from transformers import (AutoModelForTokenClassification, AutoTokenizer,
                           DataCollatorForTokenClassification, Trainer,
                           TrainingArguments, get_scheduler)
 
-from src.createDataset import CurrentEventsDataset, createDataset, type2qpp, tokenize_and_align_labels
+from src.createDataset import CurrentEventsDataset, CurrentEventsDatasetEL, getDataset, type2qpp, tokenize_and_align_labels
 from src.metrics import calculate_metrics, postprocess
 from src.eval_conll2003 import eval_conll2003
 from src.entity_linking import load_loc2entity, create_entity_list
@@ -27,9 +27,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # store_true
-    parser.add_argument("-cd", '--create_dataset', action='store_true',
-        help="Create dataset for ml from knowledge graph dataset and exit.")
-
     parser.add_argument("-feq", '--force_exept_query', action='store_true',
         help="Ignore all caches exept query cache when creating dataset.")
 
@@ -39,12 +36,11 @@ if __name__ == '__main__':
     parser.add_argument("--eval_conll", action='store_true',
         help="Evaluate with conll2003.")
     
-    parser.add_argument("-el", "--entity_linking", action='store_true',
-        help="Train for entity linking.")
 
     # store
-    parser.add_argument('--kg_ds_dir', action='store', help="Directory of knowledge graph dataset.",
-                        default="../current-events-to-kg/dataset/")
+    parser.add_argument('--kg_ds_dir', action='store', 
+        help="Directory of knowledge graph dataset.",
+        default="../current-events-to-kg/dataset/")
     
     parser.add_argument('--ds_type', action='store', type=str, default="distinct", choices=list(type2qpp.keys()))
 
@@ -61,7 +57,6 @@ if __name__ == '__main__':
     parser.add_argument('--learning_rate', action='store', type=float, default=3e-5)
 
     parser.add_argument('--eval_steps', action='store', type=int, default=200)
-                        
     
     args = parser.parse_args()
 
@@ -73,27 +68,13 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
 
-    if args.create_dataset:
-        createDataset(
-            basedir, 
-            tokenizer, 
-            basedir / args.kg_ds_dir, 
-            args.ds_type, 
-            args.num_processes, 
-            args.force_exept_query, 
-            args.force
-        )
-        print("Done!")
-        quit()
-
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
 
     # load model
-    if args.entity_linking:
+    if args.ds_type == "entity-linking-location":
         loc2entity = load_loc2entity(basedir)
-        label_names = ["O"]
+        label_names = ["NIL"]
         label_names.extend(create_entity_list(loc2entity))
-        
     else:
         label_names = ['O', 'B-LOC', 'I-LOC']
     
@@ -110,6 +91,20 @@ if __name__ == '__main__':
     
     model = model_init()
 
+    # load dataset
+    ds = getDataset(
+        basedir, 
+        tokenizer, 
+        basedir / args.kg_ds_dir, 
+        args.ds_type, 
+        args.num_processes, 
+        args.force_exept_query, 
+        args.force
+    )
+    print("Dataset:", ds)
+    print("First row:")
+    print(ds[0])
+
     
     if args.eval_conll:
         # evaluate model
@@ -117,10 +112,6 @@ if __name__ == '__main__':
 
     else:
         # training
-
-        # load dataset
-        ds = CurrentEventsDataset(args.ds_type + ".json")
-        print("Dataset:", ds)
 
         # split data
         ds_size = len(ds)
@@ -133,7 +124,6 @@ if __name__ == '__main__':
         print("ds_val:", len(ds_val))
         print("ds_test:", len(ds_test))
 
-        # print(ds["train"][0])
         train_dataloader = DataLoader(
             ds_train,
             shuffle=shuffle,
