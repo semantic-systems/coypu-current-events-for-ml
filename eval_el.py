@@ -4,7 +4,8 @@ from os.path import abspath, split
 from src.createDataset import getDataset, type2qpp
 from torch.utils.data import DataLoader
 
-from src.eval.eval_models import *
+from src.eval.eval_blink import eval_blink
+from src.eval.eval_elq import eval_elq
 
 if __name__ == '__main__':
     basedir, _ = split(abspath(__file__))
@@ -28,8 +29,8 @@ if __name__ == '__main__':
     parser.add_argument("-np", '--num_processes', action='store', type=int, default=4)
 
                         
-    parser.add_argument("-m", "--model", action='store', type=str, default=None,
-        choices=[None, "blink", "elq", "deeptype", "bert+entity"],
+    parser.add_argument("-m", "--model", action='store', type=str, default="blink",
+        choices=["blink", "elq"],
         help="Evaluate entity linking models with dataset.")
     
     args = parser.parse_args()
@@ -42,11 +43,5 @@ if __name__ == '__main__':
         pass
     elif args.model == "elq":
         eval_elq(basedir, args)
-        pass
-    elif args.model == "deeptype":
-        eval_deeptype(basedir, args)
-        pass
-    elif args.model == "bert+entity":
-        eval_bert_entity(basedir, args)
         pass
     

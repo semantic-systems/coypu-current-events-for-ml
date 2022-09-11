@@ -1,6 +1,5 @@
 import json
 from glob import glob
-from json import dump
 from os import makedirs
 from os.path import exists
 from pathlib import Path
@@ -17,16 +16,20 @@ from .entity_linking import get_loc2entity
 from .graph2json import (graph2json_mp_host, queryGraphEntitys,
                          queryGraphLocations)
 from .queryPostprocessor import (
-    QueryPostprocessorDistinct, QueryPostprocessorEntityLinking,
-    QueryPostprocessorNotDistinct, QueryPostprocessorSingleLeafLocation,
-    QueryPostprocessorSingleLeafLocationEntityLinking)
+    QueryPostprocessorDistinct, QueryPostprocessorNotDistinct,
+    QueryPostprocessorEntityLinking, QueryPostprocessorEntityLinkingWikidata,
+    QueryPostprocessorSingleLeafLocation, QueryPostprocessorSingleLeafLocationEntityLinking,
+    QueryPostprocessorEntityLinkingUntokenized, QueryPostprocessorEntityLinkingUntokenizedWikidata)
 
 type2qpp = {
     "not-distinct": QueryPostprocessorNotDistinct, 
     "distinct": QueryPostprocessorDistinct, 
     "single-leaf-location": QueryPostprocessorSingleLeafLocation, 
     "entity-linking-locations": QueryPostprocessorSingleLeafLocationEntityLinking,
-    "entity-linking": QueryPostprocessorEntityLinking
+    "entity-linking": QueryPostprocessorEntityLinking,
+    "entity-linking-wd": QueryPostprocessorEntityLinkingWikidata,
+    "entity-linking-untokenized": QueryPostprocessorEntityLinkingUntokenized,
+    "entity-linking-untokenized-wd": QueryPostprocessorEntityLinkingUntokenizedWikidata,
 }
 
 def tokenize_and_align_labels(examples, tokenizer, label_key):
@@ -61,8 +64,10 @@ def getDataset(basedir, tokenizer, ds_dir:Path, ds_type:str, num_processes:int, 
 
     if ds_type == "entity-linking-location":
         qp_kwargs["loc2entity"] = get_loc2entity(ds_filepaths, basedir, forceExeptQuery or force)
+
     
-    if ds_type == "entity-linking":
+    if ds_type in ["entity-linking", "entity-linking-wd",
+            "entity-linking-untokenized", "entity-linking-untokenized-wd"]:
         queryFunction = queryGraphEntitys
     else:
         queryFunction = queryGraphLocations

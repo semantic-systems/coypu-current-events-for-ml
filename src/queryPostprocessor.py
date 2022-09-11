@@ -55,7 +55,7 @@ class QueryPostprocessor(ABC):
 
         return {"tokens":textTokens, "labels":labels, "location": location}
     
-    def _tokenize_and_label_entity_linking(rowList):
+    def _tokenize_and_label_entity_linking(rowList, label_key="article"):
         punctuations = [".", ",", ":", ";"]
         nilLabel = "NIL"
         textTokens = []
@@ -66,7 +66,7 @@ class QueryPostprocessor(ABC):
         links=[]
         for row in rowList:
             links.append((
-                str(row["article"]),
+                str(row[label_key]),
                 int(row["begin"]) + int(row["s_begin"]), 
                 int(row["end"]) + int(row["s_begin"])
             ))
@@ -208,6 +208,10 @@ class QueryPostprocessorEntityLinking(QueryPostprocessor):
 
     @staticmethod
     def postprocess(inData:Dict):
+        return QueryPostprocessorEntityLinking._postprocess(inData, "article")
+
+    @staticmethod
+    def _postprocess(inData:Dict, label_key:str):
         res = {"data":[]}        
 
         row_dict = {}
@@ -220,7 +224,7 @@ class QueryPostprocessorEntityLinking(QueryPostprocessor):
         for rowList in row_dict.values():
             merged_row = {}
             for row in rowList:
-                r = QueryPostprocessor._tokenize_and_label_entity_linking(rowList)
+                r = QueryPostprocessor._tokenize_and_label_entity_linking(rowList, label_key=label_key)
                 
                 if "tokens" not in merged_row:
                     merged_row["tokens"] = r["tokens"]
@@ -240,11 +244,22 @@ class QueryPostprocessorEntityLinking(QueryPostprocessor):
         )
         return res
 
+class QueryPostprocessorEntityLinkingWikidata(QueryPostprocessorEntityLinking):
+    suffix = "_TC_EL_WD"
+
+    @staticmethod
+    def postprocess(inData:Dict):
+        return QueryPostprocessorEntityLinking._postprocess(inData, "wd_entity")
+
 class QueryPostprocessorEntityLinkingUntokenized(QueryPostprocessor):
     suffix = "_EL"
 
     @staticmethod
     def postprocess(inData:Dict):
+        return QueryPostprocessorEntityLinkingUntokenized._postprocess(inData, "article")
+
+    @staticmethod
+    def _postprocess(inData:Dict, label_key:str):
         res = {"data":[]}
 
         row_dict = {}
@@ -263,7 +278,7 @@ class QueryPostprocessorEntityLinkingUntokenized(QueryPostprocessor):
                 begin = row["begin"] + row["s_begin"]
                 end = row["end"] + row["s_begin"]
                 mention = row["linktext"]
-                entity = row["article"]
+                entity = row[label_key]
                 merged_row["mentions"].append((begin, end, mention, entity))                
                 
             res["data"].append(merged_row)
@@ -273,4 +288,11 @@ class QueryPostprocessorEntityLinkingUntokenized(QueryPostprocessor):
             "\nevents with linked entity:", len(res["data"])
         )
         return res
+
+class QueryPostprocessorEntityLinkingUntokenizedWikidata(QueryPostprocessorEntityLinkingUntokenized):
+    suffix = "_EL_WD"
+
+    @staticmethod
+    def postprocess(inData:Dict):
+        return QueryPostprocessorEntityLinkingUntokenized._postprocess(inData, "wd_entity")
     

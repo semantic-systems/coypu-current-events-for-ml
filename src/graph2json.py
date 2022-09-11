@@ -107,7 +107,10 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
                     dump(qres, f, separators=(',', ':'))
             
             # query and covert
-            res = queryPostprocessor.postprocess(qres, **qp_kwargs)
+            if queryPostprocessor:
+                res = queryPostprocessor.postprocess(qres, **qp_kwargs)
+            else:
+                res = qres
 
             # save 
             print(current_process().name, "Dump JSON to " + out_file_path + "...")
@@ -170,7 +173,7 @@ SELECT DISTINCT ?text ?l_loc ?s_begin ?l_loc_begin ?l_loc_end WHERE{
 def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     print(current_process().name, "Running query ...")
 
-    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a WHERE{
+    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a ?wd WHERE{
     ?e rdf:type n:Event.
     ?e nif:isString ?text.
     ?e n:hasSentence ?s.
@@ -178,10 +181,11 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     ?s n:hasLink ?l;
         nif:beginIndex ?s_begin.
 
-    ?l n:text ?linktext;
+    ?l n:hasText ?linktext;
         nif:beginIndex ?begin;
         nif:endIndex ?end;
-        n:references ?a.
+        n:hasReference ?a.
+        ?a owl:sameAs ?wd.
 }"""
     res = g.query(q)
 
@@ -190,7 +194,7 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     for row in res:
         rows["data"].append({
             "text": row.text, "linktext": row.linktext, "s_begin": row.s_begin, 
-            "begin": row.begin, "end": row.end, "article": row.a
+            "begin": row.begin, "end": row.end, "article": row.a, "wd_entity": row.wd
         })
     
     return rows
