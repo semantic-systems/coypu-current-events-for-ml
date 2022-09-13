@@ -27,7 +27,7 @@ def eval_elq(basedir, args):
     print(aida_ds)
 
     # Load Model
-    models_path = str(basedir / "BLINK/models/") # the path where you stored the ELQ models
+    models_path = str(basedir / "BLINK/models/") + "/" # the path where you stored the ELQ models
 
     config = {
         "interactive": False,
@@ -46,8 +46,7 @@ def eval_elq(basedir, args):
     }
 
     elq_args = argparse.Namespace(**config)
-    #models = elq.load_models(elq_args, logger=None)
-    models = None
+    models = elq.load_models(elq_args, logger=None)
 
     # evaluate
     eval_elq_ds(basedir, ds, "our", models, elq_args)
@@ -57,28 +56,9 @@ def eval_elq_ds(basedir, ds, ds_name, models, args):
     data_to_link = generate_data_to_link_elq(ds)
     pprint(data_to_link[0])
    
-    return # TODO delete
-
-
     predictions = elq.run(args, None, *models, test_data=data_to_link)
 
     #TODO look at output of elq and how to compute metrics
     
     print(ds_name, "dataset:")
-    print(f"biencoder accuracy= {biencoder_accuracy}")
-    print(f"recall at {config['top_k']}= {recall_at}")
-    print(f"crossencoder_normalized_accuracy= {crossencoder_normalized_accuracy}")
-    print(f"overall_unormalized_accuracy= {overall_unormalized_accuracy}")
-    print(f"support= {num_datapoints}")
-
-    with open(basedir / f"{ds_name}.json", "w", encoding="utf-8") as f:
-        d = {
-            "biencoder_accuracy":biencoder_accuracy,
-            "recall_at":recall_at,
-            "crossencoder_normalized_accuracy":crossencoder_normalized_accuracy,
-            "overall_unormalized_accuracy":overall_unormalized_accuracy,
-            "num_datapoints":num_datapoints,
-            "predictions":predictions,
-            "scores":scores,
-        }
-        json.dump(d, f, separators=(',', ':'))
+    print(predictions)

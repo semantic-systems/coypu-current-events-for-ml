@@ -95,10 +95,10 @@ def generate_data_to_link_blink_from_tokens(ds):
                         "id": len(data_to_link),
                         "label": "unknown",
                         "label_id": -1,
-                        "left_context":left_context,
+                        "context_left":left_context,
                         "mention":mention,
                         "Wikipedia_URL": label,
-                        "right_context":right_context,
+                        "context_right":right_context,
                     })
                 
                 # then reset mention
@@ -129,10 +129,10 @@ def generate_data_to_link_blink(ds):
                 "id": len(data_to_link),
                 "label": "unknown",
                 "label_id": -1,
-                "left_context":text[:start-1] if start > 0 else "",
+                "context_left":text[:start-1] if start > 0 else "",
                 "mention":text[start:end],
                 "Wikipedia_URL": url,
-                "right_context":text[end:],
+                "context_right":text[end:],
             })
     return data_to_link
 
@@ -190,6 +190,8 @@ def generate_data_to_link_elq_from_tokens(ds):
 # "mentions" (array with start, end, mention, url).
 def generate_data_to_link_elq(ds):
     data_to_link = []
+
+    i = 0 # id counter 
     # iterate over sentences
     for x in ds:
         text = x["text"]
@@ -203,10 +205,12 @@ def generate_data_to_link_elq(ds):
             end = int(m[1])
             wde = m[3].split("/")[-1]
             data_to_link.append({
+                "id": i,
                 "text": text,
                 "mentions": [start, end],
                 "wikidata_id": wde
             })
+            i += 1
     return data_to_link
 
 

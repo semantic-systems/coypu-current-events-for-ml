@@ -28,7 +28,8 @@ def eval_blink(basedir, args):
     print(aida_ds)
 
     # load model
-    models_path = str(basedir / "BLINK/models/") # the path where you stored the BLINK models
+    models_path = str(basedir / "BLINK/models/") + "/" # the path where you stored the BLINK models
+    print(models_path+"biencoder_wiki_large.bin")
 
     config = {
         "test_entities": None,
@@ -47,8 +48,7 @@ def eval_blink(basedir, args):
 
     blink_args = argparse.Namespace(**config)
 
-    #models = blink.load_models(blink_args, logger=None)
-    models = None
+    models = blink.load_models(blink_args, logger=None)
     
     eval_blink_ds(basedir, ds, "our", models, blink_args)
 
@@ -57,8 +57,6 @@ def eval_blink(basedir, args):
 def eval_blink_ds(basedir, ds, ds_name, models, args):
     data_to_link = generate_data_to_link_blink(ds)
     pprint(data_to_link[0])
-
-    return # TODO delete
 
     (
         biencoder_accuracy,
@@ -72,21 +70,11 @@ def eval_blink_ds(basedir, ds, ds_name, models, args):
     
     print(ds_name, "dataset:")
     print(f"biencoder accuracy= {biencoder_accuracy}")
-    print(f"recall at {config['top_k']}= {recall_at}")
+    print(f"recall at {args.top_k}= {recall_at}")
     print(f"crossencoder_normalized_accuracy= {crossencoder_normalized_accuracy}")
     print(f"overall_unormalized_accuracy= {overall_unormalized_accuracy}")
     print(f"support= {num_datapoints}")
-
-    with open(basedir / f"{ds_name}.json", "w", encoding="utf-8") as f:
-        d = {
-            "biencoder_accuracy":biencoder_accuracy,
-            "recall_at":recall_at,
-            "crossencoder_normalized_accuracy":crossencoder_normalized_accuracy,
-            "overall_unormalized_accuracy":overall_unormalized_accuracy,
-            "num_datapoints":num_datapoints,
-            "predictions":predictions,
-            "scores":scores,
-        }
-        json.dump(d, f, separators=(',', ':'))
+    print(f"predictions= {predictions}")
+    print(f"scores= {scores}")
 
 
