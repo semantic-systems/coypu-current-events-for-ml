@@ -54,23 +54,24 @@ def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocess
 
     
 def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs, queryFunc):
-    suffix = queryPostprocessor.suffix
-
     out_file_paths = []
     for f in kg_paths_chunk:
         filename = Path(f).parts[-1]
         splitted = filename.split("_")
         prefix = "_".join(splitted[0:2])
 
-        out_file_name = prefix + suffix + ".json" # eg May_2020_TC_D.json
-        out_file_path = str(ds_dir / out_file_name)
+        if queryPostprocessor:
+            suffix = queryPostprocessor.suffix
 
-        base_query_dir = ds_dir / str(queryFunc.__name__)
-        base_query_file_path = str(base_query_dir / (prefix + ".json"))
+            out_file_name = prefix + suffix + ".json" # eg May_2020_TC_D.json
+            out_file_path = str(ds_dir / out_file_name)
 
-        if exists(out_file_path) and not forceExeptQuery and not force:
+        if queryPostprocessor and exists(out_file_path) and not forceExeptQuery and not force:
             print(current_process().name, "File " + out_file_path + " exists.")    
         else:
+            base_query_dir = ds_dir / str(queryFunc.__name__)
+            base_query_file_path = str(base_query_dir / (prefix + ".json"))
+
             # query or use cache
             if exists(base_query_file_path) and not force:
                 print(current_process().name, "Load cached query result from" + base_query_file_path + "...")
@@ -79,7 +80,7 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
             else:
                 g = Graph()
 
-                n = Namespace("http://data.coypu.org/")
+                n = Namespace("https://schema.coypu.org/global#")
                 NIF = Namespace("http://persistence.uni-leipzig.org/nlp2rdf/ontologies/nif-core#")
                 # SEM = Namespace("http://semanticweb.cs.vu.nl/2009/11/sem/")
                 # WGS = Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#")
@@ -101,7 +102,7 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
                 qres = queryFunc(g)
 
                 # cache base query 
-                print(current_process().name, "Cache query to" + base_query_file_path + "...")
+                print(current_process().name, "Cache query to " + base_query_file_path + "...")
                 makedirs(base_query_dir, exist_ok=True)
                 with open(base_query_file_path, mode='w', encoding="utf-8") as f:
                     dump(qres, f, separators=(',', ':'))
@@ -109,13 +110,14 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
             # query and covert
             if queryPostprocessor:
                 res = queryPostprocessor.postprocess(qres, **qp_kwargs)
+
+                # save 
+                print(current_process().name, "Dump JSON to " + out_file_path + "...")
+                with open(out_file_path, mode='w', encoding="utf-8") as f:
+                    dump(res, f, separators=(',', ':'))
             else:
                 res = qres
-
-            # save 
-            print(current_process().name, "Dump JSON to " + out_file_path + "...")
-            with open(out_file_path, mode='w', encoding="utf-8") as f:
-                dump(res, f, separators=(',', ':'))
+                out_file_path = base_query_file_path
 
         out_file_paths.append(out_file_path)
     return out_file_paths
@@ -173,7 +175,7 @@ SELECT DISTINCT ?text ?l_loc ?s_begin ?l_loc_begin ?l_loc_end WHERE{
 def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     print(current_process().name, "Running query ...")
 
-    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a ?wd WHERE{
+    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a ?wd ?title WHERE{
     ?e rdf:type n:Event.
     ?e nif:isString ?text.
     ?e n:hasSentence ?s.
@@ -185,7 +187,9 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
         nif:beginIndex ?begin;
         nif:endIndex ?end;
         n:hasReference ?a.
-        ?a owl:sameAs ?wd.
+    ?a owl:sameAs ?wd;
+        n:hasName ?title.
+
 }"""
     res = g.query(q)
 
@@ -194,7 +198,8 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     for row in res:
         rows["data"].append({
             "text": row.text, "linktext": row.linktext, "s_begin": row.s_begin, 
-            "begin": row.begin, "end": row.end, "article": row.a, "wd_entity": row.wd
+            "begin": row.begin, "end": row.end, "article": row.a, "wd_entity": row.wd,
+            "title": row.title
         })
     
     return rows

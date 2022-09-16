@@ -1,31 +1,68 @@
 import blink.main_dense as blink
 import blink.ner as NER
 from src.createDataset import getDataset
-from src.datasets.aida import generate_data_to_link_blink, AidaDataset
+from src.datasets.aida import AidaDataset
 from torch.utils.data import DataLoader
 import argparse
 from pprint import pprint
 from time import sleep
 import json
 
+from .metrics import *
+
+
+# dataset provided needs to have columns for "text" and 
+# "mentions" (array with start, end, mention, url).
+def generate_data_to_link_blink(ds, title2id=None):
+    data_to_link = []
+    # iterate over sentences
+    for x in ds:
+        text = x["text"]
+        mentions = x["mentions"]
+
+        # iterate over mentions in the sentence
+        left_context = ""
+
+        for m in mentions:
+            start = int(m[0])
+            end = int(m[1])
+            url = m[3]
+            title = m[4]
+            d = {
+                "id": len(data_to_link),
+                "context_left":text[:start-1] if start > 0 else "",
+                "mention":text[start:end],
+                "Wikipedia_URL": url,
+                "Wikipedia_title": title,
+                "context_right":text[end:],
+            }
+            
+            if title2id:
+                idx = title2id[title]
+                d["label_id"] = int(idx)
+                d["label"] = str(idx)
+            
+            data_to_link.append(d)
+    return data_to_link
+
 
 def eval_blink(basedir, args):
-
     # load datasets
     ds = getDataset(
         basedir, 
         None, 
         basedir / args.kg_ds_dir, 
-        "entity-linking-untokenized", 
+        "entity-linking-untokenized-title", 
         args.num_processes, 
         args.force_exept_query, 
-        args.force,
-        True
+        args.force
     )
-    print("Our dataset:", ds)
+    print(ds)
+    print(ds[0])
 
-    aida_ds = AidaDataset(basedir)
+    aida_ds = AidaDatasetTitles(basedir, args)
     print(aida_ds)
+    print(aida_ds[0])
 
     # load model
     models_path = str(basedir / "BLINK/models/") + "/" # the path where you stored the BLINK models
@@ -50,11 +87,28 @@ def eval_blink(basedir, args):
 
     models = blink.load_models(blink_args, logger=None)
     
-    eval_blink_ds(basedir, ds, "our", models, blink_args)
+    # evaluate
+    print("\nEvaluating:")
+    print("Ours:")
+    eval_blink_ds(basedir, ds, models, blink_args)
+    print("\nAida:")
+    eval_blink_ds(basedir, aida_ds, models, blink_args)
 
-    
 
-def eval_blink_ds(basedir, ds, ds_name, models, args):
+def eval_blink_ds(basedir, ds, models, args):
+    (
+        biencoder,
+        biencoder_params,
+        crossencoder,
+        crossencoder_params,
+        candidate_encoding,
+        title2id,
+        id2title,
+        id2text,
+        wikipedia_id2local_id,
+        faiss_indexer,
+    ) = models
+
     data_to_link = generate_data_to_link_blink(ds)
     pprint(data_to_link[0])
 
@@ -68,13 +122,25 @@ def eval_blink_ds(basedir, ds, ds_name, models, args):
         scores,
     ) = blink.run(args, None, *models, test_data=data_to_link)
     
-    print(ds_name, "dataset:")
+    print("blink output:")
     print(f"biencoder accuracy= {biencoder_accuracy}")
     print(f"recall at {args.top_k}= {recall_at}")
     print(f"crossencoder_normalized_accuracy= {crossencoder_normalized_accuracy}")
     print(f"overall_unormalized_accuracy= {overall_unormalized_accuracy}")
     print(f"support= {num_datapoints}")
-    print(f"predictions= {predictions}")
-    print(f"scores= {scores}")
+    # print(f"predictions= {predictions}")
+    # print(f"scores= {scores}")
+
+    labels = [d["Wikipedia_title"] for d in data_to_link]
+
+    recall_at = calculate_recall_at(args.top_k, labels, predictions)
+    accuracy = calculate_recall_at(1, labels, predictions)
+
+    print(f"Accuracy: {accuracy}")
+    print(f"Recall@{args.top_k}: {recall_at}")
+    
+
+
+
 
 

@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Dict
 from pprint import pprint
+from typing import Dict, List, Optional, Tuple, Union
+
 from .entity_linking import create_entity_list
+
 
 class QueryPostprocessor(ABC):
     @staticmethod
@@ -259,7 +261,7 @@ class QueryPostprocessorEntityLinkingUntokenized(QueryPostprocessor):
         return QueryPostprocessorEntityLinkingUntokenized._postprocess(inData, "article")
 
     @staticmethod
-    def _postprocess(inData:Dict, label_key:str):
+    def _postprocess(inData:Dict, label_key:str, additionalEntityInfos:List[str]=[]):
         res = {"data":[]}
 
         row_dict = {}
@@ -279,7 +281,11 @@ class QueryPostprocessorEntityLinkingUntokenized(QueryPostprocessor):
                 end = row["end"] + row["s_begin"]
                 mention = row["linktext"]
                 entity = row[label_key]
-                merged_row["mentions"].append((begin, end, mention, entity))                
+                aei = [row[label] for label in additionalEntityInfos]
+                m = [begin, end, mention, entity]
+                if len(aei) > 0:
+                    m.extend(aei)
+                merged_row["mentions"].append(m)                
                 
             res["data"].append(merged_row)
 
@@ -295,4 +301,12 @@ class QueryPostprocessorEntityLinkingUntokenizedWikidata(QueryPostprocessorEntit
     @staticmethod
     def postprocess(inData:Dict):
         return QueryPostprocessorEntityLinkingUntokenized._postprocess(inData, "wd_entity")
+
+
+class QueryPostprocessorEntityLinkingUntokenizedTitle(QueryPostprocessorEntityLinkingUntokenized):
+    suffix = "_EL_TITLE"
+
+    @staticmethod
+    def postprocess(inData:Dict):
+        return QueryPostprocessorEntityLinkingUntokenized._postprocess(inData, "article", ["title"])
     

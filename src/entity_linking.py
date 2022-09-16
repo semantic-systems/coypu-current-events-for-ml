@@ -3,6 +3,7 @@ from pathlib import Path
 from rdflib import RDF, RDFS, XSD, BNode, Graph, Literal, Namespace, URIRef
 from typing import Dict, List, Union
 from json import dump, load
+from os.path import exists
 
 
 def get_loc2entity(ds_filepaths, basedir:Path, force:bool) -> Dict[str,str]:

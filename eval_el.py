@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 from os.path import abspath, split
-from src.createDataset import getDataset, type2qpp
+from src.createDataset import getDataset
 from torch.utils.data import DataLoader
 
 from src.eval.eval_blink import eval_blink
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--kg_ds_dir', action='store', type=str, default="../current-events-to-kg/dataset/",
         help="Directory of knowledge graph dataset.")
     
-    parser.add_argument("-dt", '--ds_type', action='store', type=str, default="distinct", choices=list(type2qpp.keys()))
+    parser.add_argument("-dt", '--ds_type', action='store', type=str, default="distinct") #, choices=
 
     parser.add_argument("-np", '--num_processes', action='store', type=int, default=4)
 

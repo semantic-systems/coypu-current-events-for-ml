@@ -15,22 +15,9 @@ from torch.utils.data import DataLoader, Dataset
 from .entity_linking import get_loc2entity
 from .graph2json import (graph2json_mp_host, queryGraphEntitys,
                          queryGraphLocations)
-from .queryPostprocessor import (
-    QueryPostprocessorDistinct, QueryPostprocessorNotDistinct,
-    QueryPostprocessorEntityLinking, QueryPostprocessorEntityLinkingWikidata,
-    QueryPostprocessorSingleLeafLocation, QueryPostprocessorSingleLeafLocationEntityLinking,
-    QueryPostprocessorEntityLinkingUntokenized, QueryPostprocessorEntityLinkingUntokenizedWikidata)
+from .queryPostprocessor import *
+from .CurrentEventsDatasets import *
 
-type2qpp = {
-    "not-distinct": QueryPostprocessorNotDistinct, 
-    "distinct": QueryPostprocessorDistinct, 
-    "single-leaf-location": QueryPostprocessorSingleLeafLocation, 
-    "entity-linking-locations": QueryPostprocessorSingleLeafLocationEntityLinking,
-    "entity-linking": QueryPostprocessorEntityLinking,
-    "entity-linking-wd": QueryPostprocessorEntityLinkingWikidata,
-    "entity-linking-untokenized": QueryPostprocessorEntityLinkingUntokenized,
-    "entity-linking-untokenized-wd": QueryPostprocessorEntityLinkingUntokenizedWikidata,
-}
 
 def tokenize_and_align_labels(examples, tokenizer, label_key):
     tokenized_inputs = tokenizer(examples["tokens"], is_split_into_words=True, truncation=True)
@@ -57,31 +44,23 @@ def tokenize_and_align_labels(examples, tokenizer, label_key):
     tokenized_inputs["labels"] = new_labels
     return tokenized_inputs
 
-def getDataset(basedir, tokenizer, ds_dir:Path, ds_type:str, num_processes:int, forceExeptQuery=False, force=False, raw=False) -> Dataset:
-    out_path = basedir / f"dataset/{ds_type}.json"
-    ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
-    qp_kwargs = {}
+def createJsonDataset(ds_type:str, ds_dir:Path, queryFunction, queryPostprocessor, qp_kwargs, num_processes,
+        forceExeptQuery, force) -> Path:
 
-    if ds_type == "entity-linking-location":
-        qp_kwargs["loc2entity"] = get_loc2entity(ds_filepaths, basedir, forceExeptQuery or force)
+    out_path = ds_dir / f"{ds_type}.json"
+    #ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
+    ds_filepaths = [str(ds_dir / "February_2022_base.jsonld")]
 
-    
-    if ds_type in ["entity-linking", "entity-linking-wd",
-            "entity-linking-untokenized", "entity-linking-untokenized-wd"]:
-        queryFunction = queryGraphEntitys
-    else:
-        queryFunction = queryGraphLocations
-
-    if not exists(out_path) or forceExeptQuery or force: # only test for one
+    if not exists(out_path) or forceExeptQuery or force:
         # import json ds
         dataset_file_paths = graph2json_mp_host(
             ds_dir,
             ds_filepaths,
-            type2qpp[ds_type], 
+            queryPostprocessor,
             queryFunction,
-            num_processes, 
-            forceExeptQuery=forceExeptQuery, 
-            force=force, 
+            num_processes,
+            forceExeptQuery=forceExeptQuery,
+            force=force,
             qp_kwargs=qp_kwargs
         )
 
@@ -91,108 +70,63 @@ def getDataset(basedir, tokenizer, ds_dir:Path, ds_type:str, num_processes:int, 
         ds["train"].to_json(out_path)
     else:
         print(f"Dataset already exists at {out_path}")
-    
+
+    return out_path
+
+def getDataset(basedir, tokenizer, ds_dir:Path, ds_type:str, num_processes:int,
+        forceExeptQuery=False, force=False) -> Dataset:
+
+    ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
+
+    type2args = {
+        "not-distinct": [
+            queryGraphLocations, QueryPostprocessorNotDistinct, {}, CurrentEventsDataset,
+        ],
+        "distinct": [
+            queryGraphLocations, QueryPostprocessorDistinct, {}, CurrentEventsDataset,
+        ],
+        "single-leaf-location": [
+            queryGraphLocations, QueryPostprocessorSingleLeafLocation, {}, CurrentEventsDataset,
+        ],
+        # "entity-linking-locations": [
+        #     queryGraphLocations, QueryPostprocessorSingleLeafLocationEntityLinking,
+        #     {"loc2entity": get_loc2entity(ds_filepaths, basedir, forceExeptQuery or force)},
+        #     CurrentEventsDataset,
+        # ],
+        "entity-linking": [
+            queryGraphEntitys, QueryPostprocessorEntityLinking, {}, CurrentEventsDatasetEL,
+        ],
+        "entity-linking-wd": [
+            queryGraphEntitys, QueryPostprocessorEntityLinkingWikidata, {}, CurrentEventsDataset,
+        ],
+        "entity-linking-untokenized": [
+            queryGraphEntitys, QueryPostprocessorEntityLinkingUntokenized, {}, CurrentEventsDatasetRaw,
+        ],
+        "entity-linking-untokenized-wd": [
+            queryGraphEntitys, QueryPostprocessorEntityLinkingUntokenizedWikidata, {}, CurrentEventsDatasetRaw,
+        ],
+        "entity-linking-untokenized-title": [
+            queryGraphEntitys, QueryPostprocessorEntityLinkingUntokenizedTitle, {}, CurrentEventsDatasetRaw,
+        ],
+        "wikiurl2title": [
+            queryGraphEntitys, None, {}, CurrentEventsDatasetWikiUrl2Title,
+        ],
+    }
+
+    queryFunction = type2args[ds_type][0]
+    queryPostprocessor = type2args[ds_type][1]
+    qp_kwargs = type2args[ds_type][2]
+    ds_class = type2args[ds_type][3]
+
+    # create json dataset
+    json_ds_path = createJsonDataset(ds_type, ds_dir, queryFunction, queryPostprocessor, 
+            qp_kwargs, num_processes, forceExeptQuery, force)
+
     # create finished dataset
-    if raw: 
-        ds = CurrentEventsDatasetRaw(ds_type + ".json")
-    elif ds_type == "entity-linking":
-        ds = CurrentEventsDatasetEL(ds_type + ".json", tokenizer)
+    if isinstance(ds_class, (CurrentEventsDataset, CurrentEventsDatasetEL)):
+        ds = ds_class(json_ds_path, tokenizer)
     else:
-        ds = CurrentEventsDataset(ds_type + ".json", tokenizer)
+        ds = ds_class(json_ds_path)
 
     return ds
 
-class CurrentEventsDataset(Dataset):
-    def __init__(self, filename, tokenizer):
-        with open("dataset/" + filename, "r") as f:
-            data = []
-            for line in f:
-                data.append(json.loads(line))
-        df = DataFrame.from_records(data)
-
-        # tokenize data
-        ds = hfDataset.from_pandas(df)
-        ds = ds.map(tokenize_and_align_labels, batched=True, remove_columns="tokens", 
-            fn_kwargs={"tokenizer":tokenizer, "label_key": "labels"})
-        df = ds.to_pandas()
-
-        self.df = df
-
-    def __len__(self):
-        return self.df.shape[0]
-
-    def __getitem__(self, idx):
-        return {
-            "labels": self.df.iloc[idx]["labels"], 
-            "input_ids": self.df.iloc[idx]["input_ids"], 
-            "attention_mask": self.df.iloc[idx]["attention_mask"]
-        }
-    def __repr__(self):
-        return "CurrentEventsDataset: len=" + str(self.__len__())
-
-
-
-class CurrentEventsDatasetEL(CurrentEventsDataset):
-    def __init__(self, filename, tokenizer):
-        with open("dataset/" + filename, "r") as f:
-            data = []
-            for line in f:
-                data.append(json.loads(line))
-        df = DataFrame.from_records(data)
-        print("Raw:")
-        print(df.iloc[0])
-
-        # convert entitys to ids
-        entity2id, entity_list = self.__get_entity2id(df)
-        df["labels"] = df["labels"].apply(lambda labels: [entity2id[l] for l in labels])
-        print("entity2id:")
-        print(df.iloc[0])
-
-        # tokenize data
-        ds = hfDataset.from_pandas(df)
-        ds = ds.map(tokenize_and_align_labels, batched=True, remove_columns="tokens", 
-            fn_kwargs={"tokenizer":tokenizer, "label_key": "labels"})
-        df = ds.to_pandas()
-        print("tokenized&aligned:")
-        print(df.iloc[0])
-
-        self.df = df
-        self.entity_list = entity_list
-
-
-    def __get_entity2id(self, df:DataFrame) -> Tuple[Dict, List]:
-        entitys = set()
-        for labels in df["labels"]:
-            for label in labels:
-                if label != "NIL":
-                    entitys.add(label)
-
-        entity_list_no_NIL = list(entitys)
-        entity_list_no_NIL.sort()
-
-        entity_list = ["NIL"]
-        entity_list.extend(entity_list_no_NIL)
-
-        entity2id = {e:i for i,e in enumerate(entity_list)}
-        return entity2id, entity_list
-
-
-class CurrentEventsDatasetRaw(Dataset):
-    def __init__(self, filename):
-        with open("dataset/" + filename, "r") as f:
-            data = []
-            for line in f:
-                data.append(json.loads(line))
-        df = DataFrame.from_records(data)
-        self.df = df
-
-    def __len__(self):
-        return self.df.shape[0]
-
-    def __getitem__(self, idx):
-        return {
-            c: self.df.iloc[idx][c] for c in self.df.columns
-        }
-
-    def __repr__(self):
-        return "CurrentEventsDataset: len=" + str(self.__len__())
