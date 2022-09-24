@@ -48,8 +48,7 @@ def createJsonDataset(ds_type:str, ds_dir:Path, queryFunction, queryPostprocesso
         forceExeptQuery, force) -> Path:
 
     out_path = ds_dir / f"{ds_type}.json"
-    #ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
-    ds_filepaths = [str(ds_dir / "February_2022_base.jsonld")]
+    ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
 
     if not exists(out_path) or forceExeptQuery or force:
         # import json ds

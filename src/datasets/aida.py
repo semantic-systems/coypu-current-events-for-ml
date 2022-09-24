@@ -163,7 +163,7 @@ class AidaDatasetTitles(Dataset):
         }
 
     def __repr__(self):
-        return (f"AidaDataset: len={str(self.__len__())}\n" 
+        return (f"AidaDatasetTitles: len={str(self.__len__())}\n" 
          + f"Columns: {list(self.df.columns)}")
     
     def __load(self, basedir:Path, args, path:str):
