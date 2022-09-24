@@ -47,8 +47,11 @@ class WikipediaTitleCache():
             page = requests.get(url)
             p = BeautifulSoup(page.text, 'lxml')
             articleGraphTag = p.find("script", attrs={"type": "application/ld+json"})
-            pageGraph = json.loads(articleGraphTag.string)
-            title = pageGraph["name"]
+            if articleGraphTag:
+                pageGraph = json.loads(articleGraphTag.string)
+                title = pageGraph["name"]
+            else:
+                title = p.find("span", attrs={"class": "mw-page-title-main"}).string
             self.url2title[url] = title
             return title
         
