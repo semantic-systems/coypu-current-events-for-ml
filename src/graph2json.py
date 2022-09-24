@@ -30,7 +30,7 @@ def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocess
         return res
 
     filepaths_chunks = chunks(ds_filepaths, num_processes)
-    print("Chunks:", num_processes)
+    print("Number of Workers:", num_processes)
     for i, c in enumerate(filepaths_chunks):
         print("Chunk", i)
         for fp in c:
