@@ -1,31 +1,27 @@
-from atexit import register
-from pathlib import Path
-from time import sleep
 import json
-import requests
-from bs4 import BeautifulSoup
-import time
 import re
+import time
+from atexit import register
+from os.path import exists
+from pathlib import Path
 from pprint import pprint
-from tqdm import tqdm
+from time import sleep
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import wikipedia
+import requests
+from bs4 import BeautifulSoup
+from currenteventstokg.inputHtml import InputHtml
 from src.createDataset import getDataset
 from torch.utils.data import Dataset
-from typing import List, Dict, Optional, Tuple, Union
-from os.path import exists
-
-from currenteventstokg.inputHtml import InputHtml
+from tqdm import tqdm
 
 
 class WikipediaTitleCache():
     def __init__(self, basedir:Path, article_cache_dir:Path, ignore_cache=False):
-        self.cache_id2title_path = basedir / "cache" / "pageid2title.json"
         self.cache_url2title_path = basedir / "cache" / "url2title.json"
 
-        self.id2title = self.__loadJsonDict(self.cache_id2title_path, ignore_cache)
         self.url2title = self.__loadJsonDict(self.cache_url2title_path, ignore_cache)
 
         self.lastQuery = 0
@@ -34,14 +30,6 @@ class WikipediaTitleCache():
 
         # save caches after termination
         register(self.__saveCaches)
-    
-    def getTitleById(self, pageid):
-        if id in self.id2title:
-            return self.id2title[pageid]
-        else:
-            title = wikipedia.page(pageid=pageid).title
-            self.id2title[pageid] = title
-
 
     def getTitleByUrl(self, url):
         if url in self.url2title:
@@ -68,7 +56,6 @@ class WikipediaTitleCache():
         self.lastQuery = time.time()
     
     def __saveCaches(self):
-        self.__saveJsonDict(self.cache_id2title_path, self.id2title)
         self.__saveJsonDict(self.cache_url2title_path, self.url2title)
 
     def __loadJsonDict(self, file_path, ignore):
