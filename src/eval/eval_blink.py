@@ -61,15 +61,11 @@ def eval_blink(basedir, args):
     )
     print(ds)
     print(ds[0])
-    data_to_link = generate_data_to_link_blink(ds)
-    pprint(data_to_link[0])
 
     print("Load Aida dataset:")
     aida_ds = AidaDatasetTitles(basedir, args, basedir / args.kg_cache_dir / "wiki/")
     print(aida_ds)
     print(aida_ds[0])
-    data_to_link = generate_data_to_link_blink(aida_ds)
-    pprint(data_to_link[0])
 
     # load model
     models_path = str(basedir / "BLINK/models/") + "/" # the path where you stored the BLINK models
