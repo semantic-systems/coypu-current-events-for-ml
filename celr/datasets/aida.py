@@ -12,14 +12,20 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from src.createDataset import getDataset
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
+from .createDataset import getDataset
+from . import datasets_module_dir
+
+aida_tsv_path = datasets_module_dir / "aida-yago2-dataset/AIDA-YAGO2-dataset.tsv"
 
 class WikipediaTitleCache():
-    def __init__(self, basedir:Path, article_cache_dir:Path, ignore_cache=False):
-        self.cache_url2title_path = basedir / "cache" / "url2title.json"
+    def __init__(self, datasets_cache_dir:Path, article_cache_dir:Path, ignore_cache=False):
+        # imported here to enable usage of cached datasets without installation of current-events-to-kg
+        from .currenteventstokg.inputHtml import InputHtml
+
+        self.cache_url2title_path = datasets_cache_dir / "url2title.json"
 
         self.url2title = self.__loadJsonDict(self.cache_url2title_path, ignore_cache)
 
@@ -70,7 +76,7 @@ class WikipediaTitleCache():
 
 
 class AidaDataset(Dataset):
-    def __init__(self, basedir:Path, path:str="./aida-yago2-dataset/AIDA-YAGO2-dataset.tsv"):
+    def __init__(self, basedir:Path, path:Path=aida_tsv_path):
         sentences, links_list = self.__load_aida(basedir, path)
 
         d = {
@@ -91,19 +97,18 @@ class AidaDataset(Dataset):
         return (f"AidaDataset: len={str(self.__len__())}\n" 
          + f"Columns: {list(self.df.columns)}")
     
-    def __load_aida(self, basedir:Path, path:str):
+    def __load_aida(self, basedir:Path, path:Path):
         url2title = getDataset(
-            basedir,
             None,
-            basedir / args.dataset_cache_dir,
-            basedir / args.kg_ds_dir,
+            Path(args.dataset_cache_dir),
+            Path(args.kg_ds_dir),
             "wikiurl2title",
             args.num_processes,
             args.force_exept_query,
             args.force
         )
 
-        with open(basedir / path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             sentences = []
             links_list = []
             page_ids_list = []
@@ -135,12 +140,12 @@ class AidaDataset(Dataset):
         return sentences, links_list
 
 class AidaDatasetTitles(Dataset):
-    def __init__(self, basedir:Path, args, wiki_article_cache_dir:Path, path:str="./aida-yago2-dataset/AIDA-YAGO2-dataset.tsv"):
-        ds_path = basedir / args.dataset_cache_dir / "aida-titles.json"
+    def __init__(self, args, wiki_article_cache_dir:Path, path:Path=aida_tsv_path):
+        ds_path = Path(args.dataset_cache_dir) / "aida-titles.json"
         if exists(ds_path):
             df = pd.read_json(ds_path)
         else:
-            sentences, mentions_list = self.__create(basedir, args, path, wiki_article_cache_dir)
+            sentences, mentions_list = self.__create(args, path, wiki_article_cache_dir)
             d = {
                 "text":sentences,
                 "mentions":mentions_list,
@@ -161,23 +166,21 @@ class AidaDatasetTitles(Dataset):
         return (f"AidaDatasetTitles: len={str(self.__len__())}\n" 
          + f"Columns: {list(self.df.columns)}")
     
-    def __create(self, basedir:Path, args, path:str, wiki_article_cache_dir:Path):
-        # imported here to enable usage of cached datasets without installation of current-events-to-kg
-        from currenteventstokg.inputHtml import InputHtml
+    def __create(self, args, path:Path, wiki_article_cache_dir:Path):
+        
 
         url2title = getDataset(
-            basedir,
             None,
-            basedir / args.dataset_cache_dir,
-            basedir / args.kg_ds_dir,
+            Path(args.dataset_cache_dir),
+            Path(args.kg_ds_dir),
             "wikiurl2title",
             args.num_processes,
             args.force_exept_query,
             args.force
         )
-        title_cache = WikipediaTitleCache(basedir, wiki_article_cache_dir)
+        title_cache = WikipediaTitleCache(Path(args.cache_dir), wiki_article_cache_dir)
 
-        with open(basedir / path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             sentences = []
             mentions_list = []
 

@@ -13,10 +13,12 @@ from transformers import (AutoModelForTokenClassification, AutoTokenizer,
                           DataCollatorForTokenClassification, Trainer,
                           TrainingArguments, get_scheduler)
 
-from src.createDataset import CurrentEventsDataset, CurrentEventsDatasetEL, getDataset, type2qpp, tokenize_and_align_labels
-from src.metrics import calculate_metrics, postprocess
-from src.eval_conll2003 import eval_conll2003
-from src.entity_linking import load_loc2entity, create_entity_list
+from ..datasets.createDataset import CurrentEventsDataset, CurrentEventsDatasetEL, getDataset, tokenize_and_align_labels
+from .metrics import calculate_metrics, postprocess
+from .eval_conll2003 import eval_conll2003
+from .entity_linking import load_loc2entity, create_entity_list
+from ..datasets.currenteventstokg import currenteventstokg_module_dir
+from ..datasets import datasets_module_dir
 
 from os.path import abspath, split
 
@@ -38,11 +40,15 @@ if __name__ == '__main__':
     
 
     # store
-    parser.add_argument('--kg_ds_dir', action='store', 
-        help="Directory of knowledge graph dataset.",
-        default="../current-events-to-kg/dataset/")
+    parser.add_argument('--dataset_cache_dir', action='store', type=str, 
+        default=str(datasets_module_dir / "dataset/"),
+        help="Directory for datasets.")
+
+    parser.add_argument('--kg_ds_dir', action='store', type=str, 
+        default=str(currenteventstokg_module_dir / "dataset/"),
+        help="Relative directory of knowledge graph dataset.")
     
-    parser.add_argument('--ds_type', action='store', type=str, default="distinct", choices=list(type2qpp.keys()))
+    parser.add_argument('--ds_type', action='store', type=str, default="distinct")
 
     parser.add_argument("-np", '--num_processes', action='store', type=int, default=4)
 
@@ -93,10 +99,9 @@ if __name__ == '__main__':
 
     # load dataset
     ds = getDataset(
-        basedir, 
         tokenizer,
-        basedir / args.dataset_cache_dir,
-        basedir / args.kg_ds_dir, 
+        Path(args.dataset_cache_dir),
+        Path(args.kg_ds_dir), 
         args.ds_type, 
         args.num_processes, 
         args.force_exept_query, 

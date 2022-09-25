@@ -1,14 +1,17 @@
-import blink.main_dense as blink
-import blink.ner as NER
-from src.createDataset import getDataset
-from src.datasets.aida import *
-from torch.utils.data import DataLoader
 import argparse
+import json
 from pprint import pprint
 from time import sleep
-import json
+from pathlib import Path
 
-from .metrics import *
+from blink import main_dense as blink
+from blink import ner as NER
+from torch.utils.data import DataLoader
+
+from ..datasets.aida import AidaDatasetTitles
+from ..datasets.createDataset import getDataset
+from .metrics import calculate_recall_at
+from .. import celr_module_dir
 
 
 # dataset provided needs to have columns for "text" and 
@@ -53,10 +56,9 @@ def eval_blink(basedir, args):
     # load datasets
     print("Load our dataset:")
     ds = getDataset(
-        basedir, 
         None,
-        basedir / args.dataset_cache_dir,
-        basedir / args.kg_ds_dir, 
+        Path(args.dataset_cache_dir),
+        Path(args.kg_ds_dir), 
         "entity-linking-untokenized-title", 
         args.num_processes, 
         args.force_exept_query, 
@@ -66,13 +68,13 @@ def eval_blink(basedir, args):
     print(ds[0])
 
     print("Load Aida dataset:")
-    aida_ds = AidaDatasetTitles(basedir, args, basedir / args.kg_cache_dir / "wiki/")
+    aida_ds = AidaDatasetTitles(args, Path(args.kg_cache_dir) / "wiki/")
     print(aida_ds)
     print(aida_ds[0])
 
     # load model
     print("Loading model:")
-    models_path = str(basedir / "BLINK/models/") + "/" # the path where you stored the BLINK models
+    models_path = str(celr_module_dir / ".." / "BLINK/models/") + "/" # the path where you stored the BLINK models
     print(models_path+"biencoder_wiki_large.bin")
 
     config = {

@@ -1,11 +1,16 @@
+from . import eval_module_dir
 import argparse
-from pathlib import Path
 from os.path import abspath, split
-from src.createDataset import getDataset
+from pathlib import Path
+
 from torch.utils.data import DataLoader
 
-from src.eval.eval_blink import eval_blink
-from src.eval.eval_elq import eval_elq
+from ..datasets.currenteventstokg import currenteventstokg_module_dir
+from ..datasets import datasets_module_dir
+from ..datasets.createDataset import getDataset
+from .eval_blink import eval_blink
+from .eval_elq import eval_elq
+
 
 if __name__ == '__main__':
     basedir, _ = split(abspath(__file__))
@@ -22,16 +27,20 @@ if __name__ == '__main__':
 
     # store
     parser.add_argument('--kg_cache_dir', action='store', type=str, 
-        default="../current-events-to-kg/currenteventstokg/cache/",
-        help="Relative directory of dataset generation cache.")
+        default=str(currenteventstokg_module_dir / "cache/"),
+        help="Directory of dataset generation cache.")
     
     parser.add_argument('--kg_ds_dir', action='store', type=str, 
-        default="../current-events-to-kg/currenteventstokg/dataset/",
-        help="Relative directory of knowledge graph dataset.")
+        default=str(currenteventstokg_module_dir / "dataset/"),
+        help="Directory of knowledge graph dataset.")
     
     parser.add_argument('--dataset_cache_dir', action='store', type=str, 
-        default="./dataset/",
-        help="Relative directory for datasets.")
+        default=str(datasets_module_dir / "dataset/"),
+        help="Directory for datasets.")
+    
+    parser.add_argument('--cache_dir', action='store', type=str, 
+        default=str(datasets_module_dir / "cache/"),
+        help="Directory for module local caching.")
     
     parser.add_argument("-dt", '--ds_type', action='store', type=str, default="distinct") #, choices=
 

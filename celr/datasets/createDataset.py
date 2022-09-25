@@ -12,7 +12,7 @@ from datasets import DatasetDict, Features, Sequence, Value, load_dataset
 from pandas import DataFrame
 from torch.utils.data import DataLoader, Dataset
 
-from .entity_linking import get_loc2entity
+from ..ml.entity_linking import get_loc2entity
 from .graph2json import (graph2json_mp_host, queryGraphEntitys,
                          queryGraphLocations)
 from .queryPostprocessor import *
@@ -72,7 +72,7 @@ def createJsonDataset(ds_type:str, kg_ds_dir:Path, ds_dir:Path, queryFunction, q
 
     return out_path
 
-def getDataset(basedir, tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_processes:int,
+def getDataset(tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_processes:int,
         forceExeptQuery=False, force=False) -> Dataset:
 
     ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))

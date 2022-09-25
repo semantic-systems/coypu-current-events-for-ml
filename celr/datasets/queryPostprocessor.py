@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pprint import pprint
 from typing import Dict, List, Optional, Tuple, Union
 
-from .entity_linking import create_entity_list
+from ..ml.entity_linking import create_entity_list
 
 
 class QueryPostprocessor(ABC):

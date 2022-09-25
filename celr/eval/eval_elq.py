@@ -1,12 +1,12 @@
-from src.createDataset import getDataset
-from src.datasets.aida import *
+from ..datasets.createDataset import getDataset
+from ..datasets.aida import *
 from pprint import pprint
 import argparse
 
 from .metrics import print_metrics
 
 # https://github.com/facebookresearch/BLINK/tree/main/elq
-import elq.main_dense as elq
+from elq import main_dense as elq
 
 
 # dataset provided needs to have columns for "text" and 
@@ -48,10 +48,9 @@ def generate_data_to_link_elq(ds):
 def eval_elq(basedir, args):
     # Load dataset
     ds = getDataset(
-        basedir,
         None,
-        basedir / args.dataset_cache_dir,
-        basedir / args.kg_ds_dir,
+        Path(args.dataset_cache_dir),
+        Path(args.kg_ds_dir),
         "entity-linking-untokenized-title",
         args.num_processes,
         args.force_exept_query,
@@ -61,7 +60,7 @@ def eval_elq(basedir, args):
     print(ds)
     print(ds[0])
 
-    aida_ds = AidaDatasetTitles(basedir, args, args.wiki_article_cache_dir)
+    aida_ds = AidaDatasetTitles(args, Path(args.kg_cache_dir) / "wiki/")
     print(aida_ds)
     print(aida_ds[0])
 

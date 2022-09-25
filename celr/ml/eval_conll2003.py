@@ -2,7 +2,7 @@ import torch
 from datasets import Dataset, load_dataset
 from tqdm.auto import tqdm
 
-from .createDataset import tokenize_and_align_labels
+from ..datasets.createDataset import tokenize_and_align_labels
 from .metrics import calculate_metrics, postprocess
 
 
