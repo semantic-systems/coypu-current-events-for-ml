@@ -71,6 +71,7 @@ def eval_blink(basedir, args):
     print(aida_ds[0])
 
     # load model
+    print("Loading model:")
     models_path = str(basedir / "BLINK/models/") + "/" # the path where you stored the BLINK models
     print(models_path+"biencoder_wiki_large.bin")
 
