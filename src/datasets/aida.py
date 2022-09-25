@@ -17,9 +17,11 @@ from torch.utils.data import Dataset
 from typing import List, Dict, Optional, Tuple, Union
 from os.path import exists
 
+from currenteventstokg.inputHtml import InputHtml
+
 
 class WikipediaTitleCache():
-    def __init__(self, basedir, ignore_cache=False):
+    def __init__(self, basedir:Path, article_cache_dir:Path, ignore_cache=False):
         self.cache_id2title_path = basedir / "cache" / "pageid2title.json"
         self.cache_url2title_path = basedir / "cache" / "url2title.json"
 
@@ -27,6 +29,8 @@ class WikipediaTitleCache():
         self.url2title = self.__loadJsonDict(self.cache_url2title_path, ignore_cache)
 
         self.lastQuery = 0
+
+        self.articles = InputHtml(None, article_cache_dir, ignore_cache)
 
         # save caches after termination
         register(self.__saveCaches)
@@ -43,9 +47,8 @@ class WikipediaTitleCache():
         if url in self.url2title:
             return self.url2title[url]
         else:
-            self.queryCooldown(1)
-            page = requests.get(url)
-            p = BeautifulSoup(page.text, 'lxml')
+            page = self.articles.fetchWikiPage(url)
+            p = BeautifulSoup(page, 'lxml')
             articleGraphTag = p.find("script", attrs={"type": "application/ld+json"})
             if articleGraphTag:
                 pageGraph = json.loads(articleGraphTag.string)
@@ -145,8 +148,8 @@ class AidaDataset(Dataset):
         return sentences, links_list
 
 class AidaDatasetTitles(Dataset):
-    def __init__(self, basedir:Path, args, path:str="./aida-yago2-dataset/AIDA-YAGO2-dataset.tsv"):
-        sentences, mentions_list = self.__load(basedir, args, path)
+    def __init__(self, basedir:Path, args, wiki_article_cache_dir:Path, path:str="./aida-yago2-dataset/AIDA-YAGO2-dataset.tsv"):
+        sentences, mentions_list = self.__load(basedir, args, path, wiki_article_cache_dir)
 
         d = {
             "text":sentences,
@@ -166,7 +169,7 @@ class AidaDatasetTitles(Dataset):
         return (f"AidaDatasetTitles: len={str(self.__len__())}\n" 
          + f"Columns: {list(self.df.columns)}")
     
-    def __load(self, basedir:Path, args, path:str):
+    def __load(self, basedir:Path, args, path:str, wiki_article_cache_dir:Path):
         url2title = getDataset(
             basedir,
             None,
@@ -176,7 +179,7 @@ class AidaDatasetTitles(Dataset):
             args.force_exept_query,
             args.force
         )
-        title_cache = WikipediaTitleCache(basedir)
+        title_cache = WikipediaTitleCache(basedir, wiki_article_cache_dir)
 
         with open(basedir / path, "r", encoding="utf-8") as f:
             sentences = []

@@ -21,8 +21,13 @@ if __name__ == '__main__':
         help="Ignore all caches when creating dataset.")
 
     # store
-    parser.add_argument('--kg_ds_dir', action='store', type=str, default="../current-events-to-kg/dataset/",
-        help="Directory of knowledge graph dataset.")
+    parser.add_argument('--kg_cache_dir', action='store', type=str, 
+        default="../current-events-to-kg/currenteventstokg/cache/",
+        help="Relative directory of dataset generation cache.")
+    
+    parser.add_argument('--kg_ds_dir', action='store', type=str, 
+        default="../current-events-to-kg/currenteventstokg/dataset/",
+        help="Relative directory of knowledge graph dataset.")
     
     parser.add_argument("-dt", '--ds_type', action='store', type=str, default="distinct") #, choices=
 

@@ -60,7 +60,7 @@ def eval_elq(basedir, args):
     print(ds)
     print(ds[0])
 
-    aida_ds = AidaDatasetTitles(basedir, args)
+    aida_ds = AidaDatasetTitles(basedir, args, args.wiki_article_cache_dir)
     print(aida_ds)
     print(aida_ds[0])
 
