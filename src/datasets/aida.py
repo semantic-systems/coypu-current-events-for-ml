@@ -153,7 +153,7 @@ class AidaDatasetTitles(Dataset):
 
         d = {
             "text":sentences,
-            "mentions":mentions,
+            "mentions":mentions_list,
         }
         self.df = pd.DataFrame(data=d)
 
@@ -192,7 +192,7 @@ class AidaDatasetTitles(Dataset):
             last_link_start = 0
 
             sanity_check = set()
-
+            num_sentences = 0
             for i,line in enumerate(f):
                 if i == 0:
                     continue
@@ -224,7 +224,8 @@ class AidaDatasetTitles(Dataset):
                     sentences.append(sentence)
                     mentions_list.append(mentions)
 
-                    print("o", end="", flush=True)
+                    num_sentences += 1
+                    print(f"\r{num_sentences}/20584", end="", flush=True)
 
                     sentence = ""
                     mentions = []
@@ -241,7 +242,7 @@ class AidaDatasetTitles(Dataset):
                     sentence += token
 
                 last_link = link
-        
+        print()
         return sentences, mentions_list
 
 
