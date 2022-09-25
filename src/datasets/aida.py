@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from currenteventstokg.inputHtml import InputHtml
 from src.createDataset import getDataset
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -163,6 +162,9 @@ class AidaDatasetTitles(Dataset):
          + f"Columns: {list(self.df.columns)}")
     
     def __create(self, basedir:Path, args, path:str, wiki_article_cache_dir:Path):
+        # imported here to enable usage of cached datasets without installation of current-events-to-kg
+        from currenteventstokg.inputHtml import InputHtml
+
         url2title = getDataset(
             basedir,
             None,
