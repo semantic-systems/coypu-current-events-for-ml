@@ -5,7 +5,7 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from ..datasets.currenteventstokg import currenteventstokg_module_dir
+from .. import celr_module_dir
 from ..datasets import datasets_module_dir
 from ..datasets.createDataset import getDataset
 from .eval_blink import eval_blink
@@ -27,11 +27,11 @@ if __name__ == '__main__':
 
     # store
     parser.add_argument('--kg_cache_dir', action='store', type=str, 
-        default=str(currenteventstokg_module_dir / "cache/"),
+        default=str(celr_module_dir / "../current-events-to-kg/currenteventstokg/cache/"),
         help="Directory of dataset generation cache.")
     
     parser.add_argument('--kg_ds_dir', action='store', type=str, 
-        default=str(currenteventstokg_module_dir / "dataset/"),
+        default=str(celr_module_dir / "../current-events-to-kg/currenteventstokg/dataset/"),
         help="Directory of knowledge graph dataset.")
     
     parser.add_argument('--dataset_cache_dir', action='store', type=str, 
