@@ -44,16 +44,16 @@ def tokenize_and_align_labels(examples, tokenizer, label_key):
     tokenized_inputs["labels"] = new_labels
     return tokenized_inputs
 
-def createJsonDataset(ds_type:str, ds_dir:Path, queryFunction, queryPostprocessor, qp_kwargs, num_processes,
+def createJsonDataset(ds_type:str, kg_ds_dir:Path, ds_dir:Path, queryFunction, queryPostprocessor, qp_kwargs, num_processes,
         forceExeptQuery, force) -> Path:
 
     out_path = ds_dir / f"{ds_type}.json"
-    ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
+    ds_filepaths = glob(str(kg_ds_dir / "*_*_base.jsonld"))
 
     if not exists(out_path) or forceExeptQuery or force:
         # import json ds
         dataset_file_paths = graph2json_mp_host(
-            ds_dir,
+            kg_ds_dir,
             ds_filepaths,
             queryPostprocessor,
             queryFunction,
@@ -72,7 +72,7 @@ def createJsonDataset(ds_type:str, ds_dir:Path, queryFunction, queryPostprocesso
 
     return out_path
 
-def getDataset(basedir, tokenizer, ds_dir:Path, ds_type:str, num_processes:int,
+def getDataset(basedir, tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_processes:int,
         forceExeptQuery=False, force=False) -> Dataset:
 
     ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
@@ -118,7 +118,7 @@ def getDataset(basedir, tokenizer, ds_dir:Path, ds_type:str, num_processes:int,
     ds_class = type2args[ds_type][3]
 
     # create json dataset
-    json_ds_path = createJsonDataset(ds_type, ds_dir, queryFunction, queryPostprocessor, 
+    json_ds_path = createJsonDataset(ds_type, ds_dir, dataset_cache_dir, queryFunction, queryPostprocessor, 
             qp_kwargs, num_processes, forceExeptQuery, force)
 
     # create finished dataset

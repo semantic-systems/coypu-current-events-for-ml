@@ -109,6 +109,7 @@ class AidaDataset(Dataset):
         url2title = getDataset(
             basedir,
             None,
+            basedir / args.dataset_cache_dir,
             basedir / args.kg_ds_dir,
             "wikiurl2title",
             args.num_processes,
@@ -149,13 +150,18 @@ class AidaDataset(Dataset):
 
 class AidaDatasetTitles(Dataset):
     def __init__(self, basedir:Path, args, wiki_article_cache_dir:Path, path:str="./aida-yago2-dataset/AIDA-YAGO2-dataset.tsv"):
-        sentences, mentions_list = self.__load(basedir, args, path, wiki_article_cache_dir)
-
-        d = {
-            "text":sentences,
-            "mentions":mentions_list,
-        }
-        self.df = pd.DataFrame(data=d)
+        ds_path = basedir / args.dataset_cache_dir / "aida-titles.json"
+        if exists(ds_path):
+            df = pd.read_json(ds_path)
+        else:
+            sentences, mentions_list = self.__create(basedir, args, path, wiki_article_cache_dir)
+            d = {
+                "text":sentences,
+                "mentions":mentions_list,
+            }
+            df = pd.DataFrame(data=d)
+            df.to_json(ds_path)
+        self.df = df
 
     def __len__(self):
         return self.df.shape[0]
@@ -169,10 +175,11 @@ class AidaDatasetTitles(Dataset):
         return (f"AidaDatasetTitles: len={str(self.__len__())}\n" 
          + f"Columns: {list(self.df.columns)}")
     
-    def __load(self, basedir:Path, args, path:str, wiki_article_cache_dir:Path):
+    def __create(self, basedir:Path, args, path:str, wiki_article_cache_dir:Path):
         url2title = getDataset(
             basedir,
             None,
+            basedir / args.dataset_cache_dir,
             basedir / args.kg_ds_dir,
             "wikiurl2title",
             args.num_processes,

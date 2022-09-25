@@ -51,7 +51,8 @@ def eval_blink(basedir, args):
     print("Load our dataset:")
     ds = getDataset(
         basedir, 
-        None, 
+        None,
+        basedir / args.dataset_cache_dir,
         basedir / args.kg_ds_dir, 
         "entity-linking-untokenized-title", 
         args.num_processes, 
@@ -64,7 +65,7 @@ def eval_blink(basedir, args):
     pprint(data_to_link[0])
 
     print("Load Aida dataset:")
-    aida_ds = AidaDatasetTitles(basedir, args)
+    aida_ds = AidaDatasetTitles(basedir, args, basedir / args.kg_cache_dir / "wiki/")
     print(aida_ds)
     print(aida_ds[0])
     data_to_link = generate_data_to_link_blink(aida_ds)

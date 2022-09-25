@@ -94,7 +94,8 @@ if __name__ == '__main__':
     # load dataset
     ds = getDataset(
         basedir, 
-        tokenizer, 
+        tokenizer,
+        basedir / args.dataset_cache_dir,
         basedir / args.kg_ds_dir, 
         args.ds_type, 
         args.num_processes, 

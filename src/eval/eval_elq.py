@@ -50,6 +50,7 @@ def eval_elq(basedir, args):
     ds = getDataset(
         basedir,
         None,
+        basedir / args.dataset_cache_dir,
         basedir / args.kg_ds_dir,
         "entity-linking-untokenized-title",
         args.num_processes,

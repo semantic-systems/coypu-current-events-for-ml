@@ -29,6 +29,10 @@ if __name__ == '__main__':
         default="../current-events-to-kg/currenteventstokg/dataset/",
         help="Relative directory of knowledge graph dataset.")
     
+    parser.add_argument('--dataset_cache_dir', action='store', type=str, 
+        default="./dataset/",
+        help="Relative directory for datasets.")
+    
     parser.add_argument("-dt", '--ds_type', action='store', type=str, default="distinct") #, choices=
 
     parser.add_argument("-np", '--num_processes', action='store', type=int, default=4)
@@ -39,8 +43,6 @@ if __name__ == '__main__':
         help="Evaluate entity linking models with dataset.")
     
     args = parser.parse_args()
-
-
 
     print(f"Evaluate {args.model} with ds")
     if args.model == "blink":
