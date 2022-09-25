@@ -41,6 +41,9 @@ def generate_data_to_link_blink(ds, title2id=None):
                 idx = title2id[title]
                 d["label_id"] = int(idx)
                 d["label"] = str(idx)
+            else:
+                d["label_id"] = -1
+                d["label"] = "unknown"
             
             data_to_link.append(d)
     return data_to_link
