@@ -1,18 +1,32 @@
-
 def calculate_precision(true_pos:int, false_pos:int):
-    precision = true_pos / (false_pos + true_pos)
+    try:
+        precision = true_pos / (false_pos + true_pos)
+    except ZeroDivisionError:
+        precision = 0
     return precision
 
 def calculate_accuracy(true_pos:int, true_neg:int, support:int):
-    accuracy = (true_pos + true_neg) / support
+    try:
+        accuracy = (true_pos + true_neg) / support
+    except ZeroDivisionError:
+        accuracy = 0
     return accuracy
 
 def calculate_metrics(true_pos:int, false_pos:int, true_neg:int, false_neg:int):
-    precision = true_pos / (false_pos + true_pos)
-    recall = true_pos / (true_pos + false_neg)
     support = true_pos + false_pos + true_neg + false_neg
-    accuracy = (true_pos + true_neg) / support
-    f1 = 2 * (precision * recall) / (precision + recall)
+
+    precision = calculate_precision(true_pos, false_pos)
+    accuracy = calculate_accuracy(true_pos, true_neg, support)
+    
+    try:
+        recall = true_pos / (true_pos + false_neg)
+    except ZeroDivisionError:
+        recall = 0
+    
+    try:
+        f1 = 2 * (precision * recall) / (precision + recall)
+    except ZeroDivisionError:
+        f1 = 0
     
     return precision, recall, accuracy, support, f1
 
