@@ -89,12 +89,12 @@ def eval_elq(basedir, args):
     # evaluate
     print("\nEvaluating:")
     print("Ours:")
-    eval_elq_ds(basedir, ds, models, elq_args)
+    eval_elq_ds(basedir, ds, models, elq_args, args)
     print("\nAida:")
     eval_elq_ds(basedir, aida_ds, models, elq_args)
 
 
-def eval_elq_ds(basedir, ds, models, args):
+def eval_elq_ds(basedir, ds, models, elq_args, args):
     data_to_link = generate_data_to_link_elq(ds)
     pprint(data_to_link[0])
     
@@ -103,7 +103,7 @@ def eval_elq_ds(basedir, ds, models, args):
         with open(pred_cache_path, "w", encoding="utf-8") as f:
             predictions = json.load(fp)
     else:
-        predictions = elq.run(args, None, *models, test_data=data_to_link)
+        predictions = elq.run(elq_args, None, *models, test_data=data_to_link)
         with open(pred_cache_path, "w", encoding="utf-8") as f:
             json.dump(predictions, f)
 
