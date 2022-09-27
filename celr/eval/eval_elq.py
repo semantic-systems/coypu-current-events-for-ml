@@ -97,8 +97,9 @@ def eval_elq(basedir, args):
 def eval_elq_ds(basedir, ds, models, elq_args, args):
     data_to_link = generate_data_to_link_elq(ds)
     pprint(data_to_link[0])
-    
-    pred_cache_path = Path(args.cache_dir) / "elq_predictions.json"
+
+    ds_type = type(ds).__name__
+    pred_cache_path = Path(args.cache_dir) / f"elq_predictions_{ds_type}.json"
     if exists(pred_cache_path):
         print("Loading cached output of elq")
         with open(pred_cache_path, "r", encoding="utf-8") as f:
