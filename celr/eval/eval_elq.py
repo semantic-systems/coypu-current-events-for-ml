@@ -124,9 +124,9 @@ def eval_elq_ds(basedir, ds, models, elq_args, args):
         for found_entity in found_entities:
             if found_entity in true_entities:
                 true_pos += 1
+                temp_entities.remove(found_entity)
             else:
                 false_pos += 1
-            temp_entities.remove(found_entity)
 
         # calculate negatives
         for e in temp_entities:
