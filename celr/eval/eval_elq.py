@@ -97,8 +97,15 @@ def eval_elq(basedir, args):
 def eval_elq_ds(basedir, ds, models, args):
     data_to_link = generate_data_to_link_elq(ds)
     pprint(data_to_link[0])
-
-    predictions = elq.run(args, None, *models, test_data=data_to_link)
+    
+    pred_cache_path = Path(args.cache_dir) / "elq_predictions.json"
+    if exists(pred_cache_path):
+        with open(pred_cache_path, "w", encoding="utf-8") as f:
+            predictions = json.load(fp)
+    else:
+        predictions = elq.run(args, None, *models, test_data=data_to_link)
+        with open(pred_cache_path, "w", encoding="utf-8") as f:
+            json.dump(predictions, f)
 
     true_pos = 0
     false_pos = 0
