@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from ..datasets.aida import AidaDatasetTitles
 from ..datasets.createDataset import getDataset
 from .metrics import calculate_recall_at
-from .. import celr_module_dir
+from .. import ce4ml_module_dir
 
 
 # dataset provided needs to have columns for "text" and 
@@ -74,7 +74,7 @@ def eval_blink(basedir, args):
 
     # load model
     print("Loading model:")
-    models_path = str(celr_module_dir / ".." / "BLINK/models/") + "/" # the path where you stored the BLINK models
+    models_path = str(ce4ml_module_dir / ".." / "BLINK/models/") + "/" # the path where you stored the BLINK models
     print(models_path+"biencoder_wiki_large.bin")
 
     config = {
