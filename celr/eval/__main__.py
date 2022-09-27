@@ -2,6 +2,7 @@ from . import eval_module_dir
 import argparse
 from os.path import abspath, split
 from pathlib import Path
+from os import makedirs
 
 from torch.utils.data import DataLoader
 
@@ -52,6 +53,11 @@ if __name__ == '__main__':
         help="Evaluate entity linking models with dataset.")
     
     args = parser.parse_args()
+    
+    # make sure dirs exists
+    makedirs(args.cache_dir, exist_ok=True)
+    makedirs(args.dataset_cache_dir, exist_ok=True)
+
 
     print(f"Evaluate {args.model} with ds")
     if args.model == "blink":
