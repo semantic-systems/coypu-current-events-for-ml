@@ -101,7 +101,7 @@ def eval_elq_ds(basedir, ds, models, elq_args, args):
     pred_cache_path = Path(args.cache_dir) / "elq_predictions.json"
     if exists(pred_cache_path):
         with open(pred_cache_path, "w", encoding="utf-8") as f:
-            predictions = json.load(fp)
+            predictions = json.load(f)
     else:
         predictions = elq.run(elq_args, None, *models, test_data=data_to_link)
         with open(pred_cache_path, "w", encoding="utf-8") as f:
@@ -116,7 +116,7 @@ def eval_elq_ds(basedir, ds, models, elq_args, args):
         idx = prediction["id"]
         found_entities = [ x[0] for x in prediction["pred_tuples_string"] ]
 
-        true_entities = data_to_link[i]["entity"]
+        true_entities = data_to_link[idx]["entity"]
 
         temp_entities = true_entities
 
