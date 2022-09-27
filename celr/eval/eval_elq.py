@@ -100,7 +100,7 @@ def eval_elq_ds(basedir, ds, models, elq_args, args):
     
     pred_cache_path = Path(args.cache_dir) / "elq_predictions.json"
     if exists(pred_cache_path):
-        with open(pred_cache_path, "w", encoding="utf-8") as f:
+        with open(pred_cache_path, "r", encoding="utf-8") as f:
             predictions = json.load(f)
     else:
         predictions = elq.run(elq_args, None, *models, test_data=data_to_link)
