@@ -91,7 +91,7 @@ def eval_elq(basedir, args):
     print("Ours:")
     eval_elq_ds(basedir, ds, models, elq_args, args)
     print("\nAida:")
-    eval_elq_ds(basedir, aida_ds, models, elq_args)
+    eval_elq_ds(basedir, aida_ds, models, elq_args, args)
 
 
 def eval_elq_ds(basedir, ds, models, elq_args, args):
