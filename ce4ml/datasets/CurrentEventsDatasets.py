@@ -3,6 +3,32 @@ from pandas import DataFrame
 from typing import Dict, List, Union, Tuple
 from pathlib import Path
 import json
+from datasets import Dataset as hfDataset
+
+def tokenize_and_align_labels(examples, tokenizer, label_key):
+    tokenized_inputs = tokenizer(examples["tokens"], is_split_into_words=True, truncation=True)
+
+    all_labels = examples[label_key]
+    new_labels = []
+    for i, labels in enumerate(all_labels):
+        word_ids = tokenized_inputs.word_ids(i)
+        current_word = None
+        label_ids = []
+        for word_id in word_ids:
+            if word_id is None:
+                # Special token
+                label_ids.append(-100)
+            elif word_id != current_word:
+                # Start of a new word!
+                label_ids.append(labels[word_id])
+            else:
+                # Same word as previous token
+                label_ids.append(-100)
+            current_word = word_id
+        new_labels.append(label_ids)
+
+    tokenized_inputs["labels"] = new_labels
+    return tokenized_inputs
 
 
 class CurrentEventsDataset(Dataset):

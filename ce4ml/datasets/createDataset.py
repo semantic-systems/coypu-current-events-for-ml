@@ -7,7 +7,6 @@ from pprint import pprint
 from typing import Dict, List, Union, Tuple
 
 from datasets import ClassLabel
-from datasets import Dataset as hfDataset
 from datasets import DatasetDict, Features, Sequence, Value, load_dataset
 from pandas import DataFrame
 from torch.utils.data import DataLoader, Dataset
@@ -18,31 +17,6 @@ from .graph2json import (graph2json_mp_host, queryGraphEntitys,
 from .queryPostprocessor import *
 from .CurrentEventsDatasets import *
 
-
-def tokenize_and_align_labels(examples, tokenizer, label_key):
-    tokenized_inputs = tokenizer(examples["tokens"], is_split_into_words=True, truncation=True)
-
-    all_labels = examples[label_key]
-    new_labels = []
-    for i, labels in enumerate(all_labels):
-        word_ids = tokenized_inputs.word_ids(i)
-        current_word = None
-        label_ids = []
-        for word_id in word_ids:
-            if word_id is None:
-                # Special token
-                label_ids.append(-100)
-            elif word_id != current_word:
-                # Start of a new word!
-                label_ids.append(labels[word_id])
-            else:
-                # Same word as previous token
-                label_ids.append(-100)
-            current_word = word_id
-        new_labels.append(label_ids)
-
-    tokenized_inputs["labels"] = new_labels
-    return tokenized_inputs
 
 def createJsonDataset(ds_type:str, kg_ds_dir:Path, ds_dir:Path, queryFunction, queryPostprocessor, qp_kwargs, num_processes,
         forceExeptQuery, force) -> Path:
@@ -74,6 +48,8 @@ def createJsonDataset(ds_type:str, kg_ds_dir:Path, ds_dir:Path, queryFunction, q
 
 def getDataset(tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_processes:int,
         forceExeptQuery=False, force=False) -> Dataset:
+    
+    print(f"getting dataset {ds_type}")
 
     ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
 
@@ -122,7 +98,7 @@ def getDataset(tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_
             qp_kwargs, num_processes, forceExeptQuery, force)
 
     # create finished dataset
-    if isinstance(ds_class, (CurrentEventsDataset, CurrentEventsDatasetEL)):
+    if ds_class in (CurrentEventsDataset, CurrentEventsDatasetEL):
         ds = ds_class(json_ds_path, tokenizer)
     else:
         ds = ds_class(json_ds_path)

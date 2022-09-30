@@ -1,14 +1,10 @@
-from . import eval_module_dir
 import argparse
 from os.path import abspath, split
 from pathlib import Path
 from os import makedirs
 
-from torch.utils.data import DataLoader
-
 from .. import ce4ml_module_dir
 from ..datasets import datasets_module_dir
-from ..datasets.createDataset import getDataset
 from .eval_blink import eval_blink
 from .eval_elq import eval_elq
 
@@ -47,7 +43,6 @@ if __name__ == '__main__':
 
     parser.add_argument("-np", '--num_processes', action='store', type=int, default=4)
 
-                        
     parser.add_argument("-m", "--model", action='store', type=str, default="blink",
         choices=["blink", "elq"],
         help="Evaluate entity linking models with dataset.")
