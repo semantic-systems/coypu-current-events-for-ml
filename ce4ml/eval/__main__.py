@@ -24,11 +24,11 @@ if __name__ == '__main__':
 
     # store
     parser.add_argument('--kg_cache_dir', action='store', type=str, 
-        default=str(ce4ml_module_dir / "../current-events-to-kg/currenteventstokg/cache/"),
+        default=str(ce4ml_module_dir / "../../current-events-to-kg/currenteventstokg/cache/"),
         help="Directory of dataset generation cache.")
     
     parser.add_argument('--kg_ds_dir', action='store', type=str, 
-        default=str(ce4ml_module_dir / "../current-events-to-kg/currenteventstokg/dataset/"),
+        default=str(ce4ml_module_dir / "../../current-events-to-kg/currenteventstokg/dataset/"),
         help="Directory of knowledge graph dataset.")
     
     parser.add_argument('--dataset_cache_dir', action='store', type=str, 
