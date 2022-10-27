@@ -80,13 +80,27 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
             else:
                 g = Graph()
 
-                n = Namespace("https://schema.coypu.org/global#")
                 NIF = Namespace("http://persistence.uni-leipzig.org/nlp2rdf/ontologies/nif-core#")
-                # SEM = Namespace("http://semanticweb.cs.vu.nl/2009/11/sem/")
-                # WGS = Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#")
+                COY = Namespace("https://schema.coypu.org/global#")
+                CEV = Namespace("https://schema.coypu.org/events#")
+                WGS = Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#")
+                GEO = Namespace("http://www.opengis.net/ont/geosparql#")
+                WD = Namespace("http://www.wikidata.org/entity/")
+                CRM = Namespace("http://www.cidoc-crm.org/cidoc-crm/")
+                GN = Namespace("https://www.geonames.org/ontology#")
+                SCHEMA = Namespace("https://schema.org/")
+                DCTERMS = Namespace("http://purl.org/dc/terms/")
 
-                g.namespace_manager.bind('n', n)
                 g.namespace_manager.bind('nif', NIF)
+                g.namespace_manager.bind('coy', COY)
+                g.namespace_manager.bind('coy_ev', CEV)
+                g.namespace_manager.bind('wgs', WGS)
+                g.namespace_manager.bind('geo', GEO)
+                g.namespace_manager.bind('wd', WD)
+                g.namespace_manager.bind('crm', CRM)
+                g.namespace_manager.bind('gn', GN)
+                g.namespace_manager.bind('schema', SCHEMA)
+                g.namespace_manager.bind('dcterms', DCTERMS)
 
                 # parse basegraph
                 print(current_process().name, "Parsing " + f + "...")
@@ -127,31 +141,34 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
 def queryGraphLocations(g:Graph) -> Dict[str,List]:
     print(current_process().name, "Running query ...")
 
-    q = """#PREFIX n: <http://data.coypu.org/>
-SELECT DISTINCT ?text ?l_loc ?s_begin ?l_loc_begin ?l_loc_end WHERE{
-    ?e rdf:type n:Event.
-    ?e nif:isString ?text.
-    ?e n:hasSentence ?s.
+    q = """SELECT DISTINCT ?text ?l_loc ?s_begin ?l_loc_begin ?l_loc_end WHERE{
+    ?e  a nif:Context;
+        nif:isString ?text;
+        nif:subString ?s.
 
-    ?s n:hasLink ?l;
+    ?s  a nif:Sentence;
+        nif:subString ?l;
         nif:beginIndex ?s_begin.
 
-    ?l n:text ?l_loc;
+    ?l  a nif:Phase;
+        nif:anchorOf ?l_loc;
         nif:beginIndex ?l_loc_begin;
         nif:endIndex ?l_loc_end;
-        n:references ?a.
+        gn:wikipediaArticle ?a.
 
-    ?a rdf:type n:Location.
-    ?a owl:sameAs ?wd_a.
+    ?a  a gn:WikipediaArticle;
+        owl:sameAs ?wd_a.
+
+    ?p  a crm:E53_Place;
+        gn:wikipediaArticle ?a.
     
      FILTER NOT EXISTS { 
-        ?e n:hasSentence ?s2.
-        ?s2 n:hasLink ?l2.
-        ?l2 n:references ?a2.
-        ?a2 rdf:type n:Location.
-        ?a2 owl:sameAs ?wd_cl.
-        ?wd_cl n:hasParentLocation ?cl.
-        ?cl n:parentLocation ?wd_a.
+        ?e nif:subString ?s2.
+        ?s2 nif:subString ?l2.
+        ?l2 gn:wikipediaArticle ?a2.
+        ?p2 a crm:E53_Place;
+            gn:wikipediaArticle ?a2.
+        ?p2 crm:P89_falls_within ?p.
     } .
 }"""
     res = g.query(q)
@@ -176,20 +193,22 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     print(current_process().name, "Running query ...")
 
     q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a ?wd ?title WHERE{
-    ?e rdf:type n:Event.
-    ?e nif:isString ?text.
-    ?e n:hasSentence ?s.
+    ?e  a nif:Context;
+        nif:isString ?text;
+        nif:subString ?s.
 
-    ?s n:hasLink ?l;
+    ?s  a nif:Sentence;
+        nif:subString ?l;
         nif:beginIndex ?s_begin.
 
-    ?l n:hasText ?linktext;
+    ?l  a nif:Phase;
+        nif:anchorOf ?linktext;
         nif:beginIndex ?begin;
         nif:endIndex ?end;
-        n:hasReference ?a.
+        gn:wikipediaArticle ?a.
+    
     ?a owl:sameAs ?wd;
-        n:hasName ?title.
-
+        schema:name ?title.
 }"""
     res = g.query(q)
 
