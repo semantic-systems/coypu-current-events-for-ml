@@ -17,7 +17,7 @@ from ..datasets.createDataset import CurrentEventsDataset, CurrentEventsDatasetE
 from .metrics import calculate_metrics, postprocess
 from .eval_conll2003 import eval_conll2003
 from .entity_linking import load_loc2entity, create_entity_list
-from ..datasets.currenteventstokg import currenteventstokg_module_dir
+from ..datasets.currenteventstokg import currenteventstokg_dir
 from ..datasets import datasets_module_dir
 
 from os.path import abspath, split
@@ -45,7 +45,7 @@ if __name__ == '__main__':
         help="Directory for datasets.")
 
     parser.add_argument('--kg_ds_dir', action='store', type=str, 
-        default=str(currenteventstokg_module_dir / "dataset/"),
+        default=str(currenteventstokg_dir / "dataset/"),
         help="Relative directory of knowledge graph dataset.")
     
     parser.add_argument('--ds_type', action='store', type=str, default="distinct")
