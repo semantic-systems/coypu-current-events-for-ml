@@ -16,18 +16,19 @@ from .graph2json import (graph2json_mp_host, queryGraphEntitys,
                          queryGraphLocations)
 from .queryPostprocessor import *
 from .CurrentEventsDatasets import *
+from . import datasets_module_dir
 
 
-def createJsonDataset(ds_type:str, kg_ds_dir:Path, ds_dir:Path, queryFunction, queryPostprocessor, qp_kwargs, num_processes,
-        forceExeptQuery, force) -> Path:
+def createJsonDataset(ds_type:str, dataset_input_dir:Path, dataset_output_dir:Path, queryFunction, 
+        queryPostprocessor, qp_kwargs, num_processes, forceExeptQuery, force) -> Path:
 
-    out_path = ds_dir / f"{ds_type}.json"
-    ds_filepaths = glob(str(kg_ds_dir / "*_*_base.jsonld"))
+    out_path = dataset_output_dir / f"{ds_type}.json"
+    ds_filepaths = glob(str(dataset_input_dir / "*_*_base.jsonld"))
 
     if not exists(out_path) or forceExeptQuery or force:
         # import json ds
         dataset_file_paths = graph2json_mp_host(
-            kg_ds_dir,
+            dataset_input_dir,
             ds_filepaths,
             queryPostprocessor,
             queryFunction,
@@ -46,12 +47,12 @@ def createJsonDataset(ds_type:str, kg_ds_dir:Path, ds_dir:Path, queryFunction, q
 
     return out_path
 
-def getDataset(tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_processes:int,
+def getDataset(tokenizer, dataset_output_dir:Path, dataset_input_dir:Path, ds_type:str, num_processes:int,
         forceExeptQuery=False, force=False) -> Dataset:
     
     print(f"getting dataset {ds_type}")
 
-    ds_filepaths = glob(str(ds_dir / "*_*_base.jsonld"))
+    ds_filepaths = glob(str(dataset_input_dir / "*_*_base.jsonld"))
 
     type2args = {
         "not-distinct": [
@@ -94,7 +95,7 @@ def getDataset(tokenizer, dataset_cache_dir:Path, ds_dir:Path, ds_type:str, num_
     ds_class = type2args[ds_type][3]
 
     # create json dataset
-    json_ds_path = createJsonDataset(ds_type, ds_dir, dataset_cache_dir, queryFunction, queryPostprocessor, 
+    json_ds_path = createJsonDataset(ds_type, dataset_input_dir, dataset_output_dir, queryFunction, queryPostprocessor, 
             qp_kwargs, num_processes, forceExeptQuery, force)
 
     # create finished dataset

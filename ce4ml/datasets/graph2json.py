@@ -54,6 +54,9 @@ def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocess
 
     
 def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force, qp_kwargs, queryFunc):
+    queryFunc_name = str(queryFunc.__name__)
+    base_query_dir = ds_dir / queryFunc_name
+
     out_file_paths = []
     for f in kg_paths_chunk:
         filename = Path(f).parts[-1]
@@ -64,12 +67,14 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
             suffix = queryPostprocessor.suffix
 
             out_file_name = prefix + suffix + ".json" # eg May_2020_TC_D.json
-            out_file_path = str(ds_dir / out_file_name)
+            out_file_dir = base_query_dir / f"QPP{suffix}"
+            makedirs(out_file_dir, exist_ok=True)
+            out_file_path = str(out_file_dir / out_file_name)
 
         if queryPostprocessor and exists(out_file_path) and not forceExeptQuery and not force:
-            print(current_process().name, "File " + out_file_path + " exists.")    
+            print(current_process().name, "File " + out_file_path + " exists.")
         else:
-            base_query_dir = ds_dir / str(queryFunc.__name__)
+            
             base_query_file_path = str(base_query_dir / (prefix + ".json"))
 
             # query or use cache
@@ -82,7 +87,6 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
 
                 NIF = Namespace("http://persistence.uni-leipzig.org/nlp2rdf/ontologies/nif-core#")
                 COY = Namespace("https://schema.coypu.org/global#")
-                CEV = Namespace("https://schema.coypu.org/events#")
                 WGS = Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#")
                 GEO = Namespace("http://www.opengis.net/ont/geosparql#")
                 WD = Namespace("http://www.wikidata.org/entity/")
@@ -93,7 +97,6 @@ def mp_worker(kg_paths_chunk, queryPostprocessor, ds_dir, forceExeptQuery, force
 
                 g.namespace_manager.bind('nif', NIF)
                 g.namespace_manager.bind('coy', COY)
-                g.namespace_manager.bind('coy_ev', CEV)
                 g.namespace_manager.bind('wgs', WGS)
                 g.namespace_manager.bind('geo', GEO)
                 g.namespace_manager.bind('wd', WD)
@@ -146,29 +149,26 @@ def queryGraphLocations(g:Graph) -> Dict[str,List]:
         nif:isString ?text;
         nif:subString ?s.
 
-    ?s  a nif:Sentence;
-        nif:subString ?l;
+    ?s  nif:subString ?l;
         nif:beginIndex ?s_begin.
 
-    ?l  a nif:Phase;
-        nif:anchorOf ?l_loc;
+    ?l  nif:anchorOf ?l_loc;
         nif:beginIndex ?l_loc_begin;
         nif:endIndex ?l_loc_end;
         gn:wikipediaArticle ?a.
 
-    ?a  a gn:WikipediaArticle;
-        owl:sameAs ?wd_a.
+    ?a  owl:sameAs ?wd_a.
 
-    ?p  a crm:E53_Place;
+    ?p  a coy:Location;
         gn:wikipediaArticle ?a.
     
      FILTER NOT EXISTS { 
         ?e nif:subString ?s2.
         ?s2 nif:subString ?l2.
         ?l2 gn:wikipediaArticle ?a2.
-        ?p2 a crm:E53_Place;
+        ?p2 a coy:Location;
             gn:wikipediaArticle ?a2.
-        ?p2 crm:P89_falls_within ?p.
+        ?p2 coy:isLocatedIn ?p.
     } .
 }"""
     res = g.query(q)
