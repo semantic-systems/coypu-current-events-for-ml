@@ -64,7 +64,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--eval_steps', action='store', type=int, default=200)
     
-    parser.add_argument('--warmup_steps', action='store', type=int, default=0)
+    parser.add_argument('--warmup_steps', action='store', type=float, default=0,
+        help="Percentage of total training steps used for warmup [0-1]")
 
     args = parser.parse_args()
 
@@ -156,11 +157,12 @@ if __name__ == '__main__':
 
         num_update_steps_per_epoch = len(train_dataloader)
         num_training_steps = num_train_epochs * num_update_steps_per_epoch
+        num_warmup_steps = int(num_training_steps * args.warmup_steps)
 
         lr_scheduler = get_scheduler(
             "linear",
             optimizer=optimizer,
-            num_warmup_steps=args.warmup_steps,
+            num_warmup_steps=num_warmup_steps,
             num_training_steps=num_training_steps,
         )
 
