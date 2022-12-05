@@ -59,11 +59,13 @@ if __name__ == '__main__':
     parser.add_argument('--shuffle', action='store', type=bool, default=True)
     
     parser.add_argument('--num_train_epochs', action='store', type=int, default=4)
-    
+
     parser.add_argument('--learning_rate', action='store', type=float, default=3e-5)
 
     parser.add_argument('--eval_steps', action='store', type=int, default=200)
     
+    parser.add_argument('--warmup_steps', action='store', type=int, default=0)
+
     args = parser.parse_args()
 
     # parameters
@@ -158,7 +160,7 @@ if __name__ == '__main__':
         lr_scheduler = get_scheduler(
             "linear",
             optimizer=optimizer,
-            num_warmup_steps=0,
+            num_warmup_steps=args.warmup_steps,
             num_training_steps=num_training_steps,
         )
 
