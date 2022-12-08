@@ -124,9 +124,9 @@ if __name__ == '__main__':
 
         # split data
         ds_size = len(ds)
-        test_size = int(0.1 * ds_size)
+        test_size = int(0 * ds_size)
         val_size = int(0.1 * ds_size)
-        train_size = ds_size - test_size - val_size    
+        train_size = ds_size - test_size - val_size
 
         ds_train, ds_val, ds_test = random_split(ds, [train_size, val_size, test_size])
         print("ds_train:", len(ds_train))
