@@ -138,10 +138,22 @@ class QueryPostprocessorDistinct(QueryPostprocessor):
                 row_dict[row["text"]].append(row)
             else:
                 row_dict[row["text"]] = [row]
-        
+
         for rowList in row_dict.values():
-            res_row = QueryPostprocessor._tokenize_and_label_location_row(rowList[0])
+            def get_begin(row):
+                return int(row["begin"]) + int(row["s_begin"])
+            
+            # get first location
+            first_location_row = None
+            for row in rowList:
+                if first_location_row == None:
+                    first_location_row = row
+                elif get_begin(row) < get_begin(first_location_row):
+                    first_location_row = row
+
+            res_row = QueryPostprocessor._tokenize_and_label_location_row(first_location_row)
             res["data"].append(res_row)
+
         print("Row count to postprocess:", len(inData["data"]), "resulting in:", len(res["data"]))
         return res
 
