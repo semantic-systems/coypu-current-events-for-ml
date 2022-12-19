@@ -117,7 +117,8 @@ class AidaDataset(Dataset):
             links = []
             page_ids = []
             for i,line in enumerate(f):
-                if i == 0:
+                # remove -docstart-
+                if line.startswith("-DOCSTART-"):
                     continue
 
                 tokens = line.strip("\n").split("\t", 7)
