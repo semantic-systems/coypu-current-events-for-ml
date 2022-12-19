@@ -168,8 +168,6 @@ class AidaDatasetTitles(Dataset):
          + f"Columns: {list(self.df.columns)}")
     
     def __create(self, args, path:Path, wiki_article_cache_dir:Path):
-        
-
         url2title = getDataset(
             None,
             Path(args.dataset_cache_dir),
@@ -194,7 +192,8 @@ class AidaDatasetTitles(Dataset):
             sanity_check = set()
             num_sentences = 0
             for i,line in enumerate(f):
-                if i == 0:
+                # remove -docstart-
+                if line.startswith("-DOCSTART-"):
                     continue
 
                 tokens = line.strip("\n").split("\t", 7)
