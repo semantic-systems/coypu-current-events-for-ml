@@ -14,8 +14,6 @@ includedGraphExtensions = [] # "ohg", "osm", "raw"
 
 def graph2json_mp_host(ds_dir, ds_filepaths, queryPostprocessor:QueryPostprocessor, queryFunc, 
         num_processes=4, forceExeptQuery=False, force=False, qp_kwargs={}) -> List[str]:
-    #ds_filepaths = glob(str(ds_dir / "January_2020_base.jsonld"))
-    #ds_filepaths.extend(glob(str(ds_dir / "January_2021_base.jsonld")))
     print("Found these base graph files:")
     pprint(ds_filepaths)
 
@@ -176,9 +174,6 @@ def queryGraphLocations(g:Graph) -> Dict[str,List]:
     rows = {}
     rows["data"] = []
     for row in res:
-        # print(row.text.strip(" "), "\nl_loc:", row.l_loc)
-        # #print(row.wd_pa, row.pa_loc, row.pwdl, row.plop, "\n")
-        # print("\n")
         rows["data"].append({
             "text": row.text, "s_begin": row.s_begin, "location": row.l_loc, 
             "begin": row.l_loc_begin, "end": row.l_loc_end
@@ -192,7 +187,7 @@ def queryGraphLocations(g:Graph) -> Dict[str,List]:
 def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     print(current_process().name, "Running query ...")
 
-    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a ?wd ?title WHERE{
+    q = """SELECT DISTINCT ?text ?linktext ?s_begin ?begin ?end ?a_url ?wd ?title WHERE{
     ?e  a nif:Context;
         nif:isString ?text;
         nif:subString ?s.
@@ -201,14 +196,15 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
         nif:subString ?l;
         nif:beginIndex ?s_begin.
 
-    ?l  a nif:Phase;
+    ?l  a nif:Phrase;
         nif:anchorOf ?linktext;
         nif:beginIndex ?begin;
         nif:endIndex ?end;
         gn:wikipediaArticle ?a.
     
-    ?a owl:sameAs ?wd;
-        schema:name ?title.
+    ?a  owl:sameAs ?wd;
+        schema:name ?title;
+        dcterms:source ?a_url.
 }"""
     res = g.query(q)
 
@@ -217,7 +213,7 @@ def queryGraphEntitys(g:Graph) -> Dict[str,List]:
     for row in res:
         rows["data"].append({
             "text": row.text, "linktext": row.linktext, "s_begin": row.s_begin, 
-            "begin": row.begin, "end": row.end, "article": row.a, "wd_entity": row.wd,
+            "begin": row.begin, "end": row.end, "article": row.a_url, "wd_entity": row.wd,
             "title": row.title
         })
     
