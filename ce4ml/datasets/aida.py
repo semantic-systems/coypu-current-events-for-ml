@@ -31,7 +31,7 @@ class WikipediaTitleCache():
 
         self.lastQuery = 0
 
-        self.articles = InputHtml(None, article_cache_dir, ignore_cache)
+        self.articles = InputHtml(None, article_cache_dir, ignore_cache, ignore_cache)
 
         # save caches after termination
         register(self.__saveCaches)
