@@ -143,12 +143,12 @@ class AidaDataset(Dataset):
 class AidaDatasetTitles(Dataset):
     def __init__(self, args, wiki_article_cache_dir:Path, path:Path=aida_tsv_path):
         ds_path = Path(args.dataset_cache_dir) / "aida-titles.json"
-        if exists(ds_path):
+        if exists(ds_path) and not (args.force or args.force_exept_query):
             df = pd.read_json(ds_path)
         else:
-            sentences, mentions_list = self.__create(args, path, wiki_article_cache_dir)
+            texts, mentions_list = self.__create_doc_samples(args, path, wiki_article_cache_dir)
             d = {
-                "text":sentences,
+                "text":texts,
                 "mentions":mentions_list,
             }
             df = pd.DataFrame(data=d)
@@ -243,6 +243,83 @@ class AidaDatasetTitles(Dataset):
                 last_link = link
         print()
         return sentences, mentions_list
+
+    def __create_doc_samples(self, args, path:Path, wiki_article_cache_dir:Path):
+        url2title = getDataset(
+            None,
+            Path(args.dataset_cache_dir),
+            Path(args.kg_ds_dir),
+            "wikiurl2title",
+            args.num_processes,
+            args.force_exept_query,
+            args.force
+        )
+        title_cache = WikipediaTitleCache(Path(args.cache_dir), wiki_article_cache_dir)
+
+        with open(path, "r", encoding="utf-8") as f:
+            docs = []
+            mentions_list = []
+
+            doc = ""
+            mentions = []
+
+            last_link = 'NIL'
+            last_link_start = 0
+
+            sanity_check = set()
+            num_docs = 0
+            for i,line in enumerate(f):
+                if line.startswith("-DOCSTART-"):
+                    if i == 0:
+                        continue
+                    # next doc
+                    assert { m[3] for m in mentions } == sanity_check
+                    docs.append(doc)
+                    mentions_list.append(mentions)
+
+                    num_docs += 1
+                    print(f"\r{num_docs}", end="", flush=True)
+
+                    doc = ""
+                    mentions = []
+                    sanity_check = set()
+                else:
+                    # append token to doc (and add mention)
+                    tokens = line.strip("\n").split("\t", 7)
+                    a = ['NIL'] * 7
+                    for i,t in enumerate(tokens):
+                        a[i] = t
+                    token = a[0]
+                    link = a[4]
+                    page_id = a[5]
+                    if link != 'NIL':
+                        sanity_check.add(link)
+                        if link in url2title:
+                            title = url2title[link]
+                        else:
+                            title = title_cache.getTitleByUrl(link)
+
+                    if last_link != 'NIL' and (last_link != link or line == "\n"):
+                        # mention ended
+                        mention = doc[last_link_start:]
+                        m = [last_link_start, len(doc), mention, last_link, title]
+                        mentions.append(m)
+
+                    # append token to current doc
+                    if len(doc) > 0:
+                        doc += " "
+                    
+                    if last_link != link:
+                        # set new mention start
+                        last_link_start = len(doc)
+                    #print(token, str(token))
+                    doc += token
+                    last_link = link
+
+        print()
+        print(docs[0])
+        print(mentions_list[0])
+        return docs, mentions_list
 
 
 # dataset provided needs to have columns for "tokens" and "labels".
