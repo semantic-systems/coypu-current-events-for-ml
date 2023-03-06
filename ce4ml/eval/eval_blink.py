@@ -23,12 +23,6 @@ def generate_data_to_link_blink(ds, title2id=None):
         text = x["text"]
         mentions = x["mentions"]
 
-        
-        # handling faulty mentions like:
-        # ".mw-parser-output .tooltip-dotted{border-bottom:1px dotted;cursor:help}Mw"
-        if len(mention) >= 60:
-            continue
-
         # iterate over mentions in the sentence
         left_context = ""
 
@@ -37,15 +31,22 @@ def generate_data_to_link_blink(ds, title2id=None):
             end = int(m[1])
             url = m[3]
             title = m[4]
+            mention = text[start:end]
+                                
+            # handling faulty mentions like:
+            # ".mw-parser-output .tooltip-dotted{border-bottom:1px dotted;cursor:help}Mw"
+            if len(mention) >= 60:
+                continue
+
             d = {
                 "id": len(data_to_link),
                 "context_left":text[:start-1] if start > 0 else "",
-                "mention":text[start:end],
+                "mention": mention,
                 "Wikipedia_URL": url,
                 "Wikipedia_title": title,
                 "context_right":text[end:],
             }
-            
+
             if title2id:
                 idx = title2id[title]
                 d["label_id"] = int(idx)
