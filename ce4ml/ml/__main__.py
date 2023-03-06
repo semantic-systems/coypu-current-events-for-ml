@@ -1,26 +1,20 @@
 import argparse
+from os import makedirs
+from os.path import split, abspath
 from pathlib import Path
-from pprint import pprint
+from typing import List
 
-import torch
-from accelerate import Accelerator
+import lightning as pl
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from transformers import AutoTokenizer, DataCollatorForTokenClassification
 
-from torch.optim import AdamW
-from torch.utils.data import DataLoader, random_split
-from torch.utils.tensorboard import SummaryWriter
-from tqdm.auto import tqdm
-from transformers import (AutoModelForTokenClassification, AutoTokenizer,
-                          DataCollatorForTokenClassification, Trainer,
-                          TrainingArguments, get_scheduler)
-
-from ..datasets.createDataset import CurrentEventsDataset, CurrentEventsDatasetEL, getDataset, tokenize_and_align_labels
-from .metrics import calculate_metrics, postprocess
-from .eval_conll2003 import eval_conll2003
-from .entity_linking import load_loc2entity, create_entity_list
-from ..datasets.currenteventstokg import currenteventstokg_dir
+from .entity_linking import create_entity_list, load_loc2entity
 from ..datasets import datasets_module_dir
+from ..datasets.currenteventstokg import currenteventstokg_dir
+from ..datasets.createDataset import getDataset
+from torch.utils.data import DataLoader, random_split
+from .pl_model import LocationExtractor
 
-from os.path import abspath, split
 
 if __name__ == '__main__':
     basedir, _ = split(abspath(__file__))
@@ -58,14 +52,11 @@ if __name__ == '__main__':
     
     parser.add_argument('--shuffle', action='store', type=bool, default=True)
     
-    parser.add_argument('--num_train_epochs', action='store', type=int, default=4)
-
     parser.add_argument('--learning_rate', action='store', type=float, default=3e-5)
 
     parser.add_argument('--eval_steps', action='store', type=int, default=200)
     
-    parser.add_argument('--warmup_steps', action='store', type=float, default=0,
-        help="Percentage of total training steps used for warmup [0-1]")
+    parser.add_argument('--warmup_length', action='store', type=float, default=0.1)
 
     args = parser.parse_args()
 
@@ -73,34 +64,16 @@ if __name__ == '__main__':
     model_checkpoint = args.model_checkpoint
     batch_size = args.batch_size
     shuffle = args.shuffle
-    num_train_epochs = args.num_train_epochs
+    learning_rate = args.learning_rate
+    warmup_length = args.warmup_length 
 
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-
-    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
-
-    # load model
-    if args.ds_type == "entity-linking-location":
-        loc2entity = load_loc2entity(basedir)
-        label_names = ["NIL"]
-        label_names.extend(create_entity_list(loc2entity))
-    else:
-        label_names = ['O', 'B-LOC', 'I-LOC']
-    
-    id2label = {i: label for i, label in enumerate(label_names)}
-    label2id = {v: k for k, v in id2label.items()}
-
-    # Function that returns an untrained model to be trained
-    def model_init():
-        return AutoModelForTokenClassification.from_pretrained(
-            model_checkpoint,
-            id2label=id2label,
-            label2id=label2id,
-        )
-    
-    model = model_init()
+    # determinism
+    pl.seed_everything(42, workers=True)
 
     # load dataset
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
+    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+
     ds = getDataset(
         tokenizer,
         Path(args.dataset_cache_dir),
@@ -114,118 +87,88 @@ if __name__ == '__main__':
     print("First row:")
     print(ds[0])
 
-    
-    if args.eval_conll:
-        # evaluate model
-        eval_conll2003(model, data_collator, tokenizer, batch_size, id2label)
+    ds_size = len(ds)
+    test_size = int(0.1 * ds_size)
+    val_size = int(0.1 * ds_size)
+    train_size = ds_size - test_size - val_size
 
+    ds_train, ds_val, ds_test = random_split(ds, [train_size, val_size, test_size])
+    print("ds_train:", len(ds_train))
+    print("ds_val:", len(ds_val))
+    print("ds_test:", len(ds_test))
+
+    train_dataloader = DataLoader(
+        ds_train,
+        shuffle=shuffle,
+        collate_fn=data_collator,
+        batch_size=batch_size,
+    )
+    eval_dataloader = DataLoader(
+        ds_val,
+        collate_fn=data_collator,
+        batch_size=batch_size,
+    )
+    test_dataloader = DataLoader(
+        ds_test,
+        collate_fn=data_collator,
+        batch_size=batch_size,
+    )
+
+    # load model
+    if args.ds_type == "entity-linking-location":
+        loc2entity = load_loc2entity(basedir)
+        label_names = ["NIL"]
+        label_names.extend(create_entity_list(loc2entity))
     else:
-        # training
+        label_names = ['O', 'B-LOC', 'I-LOC']
+    
+    model = LocationExtractor(
+        model_name_or_path=model_checkpoint, 
+        num_batches_per_epoch=len(train_dataloader), 
+        label_names=label_names,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        warmup_length=warmup_length,
+    )
 
-        # split data
-        ds_size = len(ds)
-        test_size = int(0 * ds_size)
-        val_size = int(0.1 * ds_size)
-        train_size = ds_size - test_size - val_size
+    # init trainer
+    monitor_value = "val_loss"
+    monitor_mode = "min"
 
-        ds_train, ds_val, ds_test = random_split(ds, [train_size, val_size, test_size])
-        print("ds_train:", len(ds_train))
-        print("ds_val:", len(ds_val))
-        print("ds_test:", len(ds_test))
+    early_stop_callback = EarlyStopping(
+        monitor=monitor_value, 
+        patience=5, 
+        mode=monitor_mode,
+    )
+    model_checkpoint_callback = ModelCheckpoint(
+        monitor=monitor_value,
+        mode=monitor_mode,
+        save_top_k=1
+    )
 
-        train_dataloader = DataLoader(
-            ds_train,
-            shuffle=shuffle,
-            collate_fn=data_collator,
-            batch_size=batch_size,
-        )
-        eval_dataloader = DataLoader(
-            ds_val,
-            collate_fn=data_collator,
-            batch_size=batch_size,
-        )
+    trainer_dir = basedir / "pl_trainer"
+    makedirs(trainer_dir, exist_ok=True)
 
-        optimizer = AdamW(
-            model.parameters(), 
-            lr=args.learning_rate
-        )
+    trainer = pl.Trainer(
+        # accelerator='gpu',
+        # devices=[0],
+        default_root_dir=trainer_dir,
+        callbacks=[model_checkpoint_callback, early_stop_callback],
+    )
 
-        accelerator = Accelerator()
-        model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
-            model, optimizer, train_dataloader, eval_dataloader
-        )
+    # train
+    trainer.fit(
+        model=model, 
+        train_dataloaders=train_dataloader,
+        val_dataloaders=eval_dataloader
+    )
+    
+    # load best model
+    model = LocationExtractor.load_from_checkpoint(model_checkpoint_callback.best_model_path)
 
-        num_update_steps_per_epoch = len(train_dataloader)
-        num_training_steps = num_train_epochs * num_update_steps_per_epoch
-        num_warmup_steps = int(num_training_steps * args.warmup_steps)
-
-        lr_scheduler = get_scheduler(
-            "linear",
-            optimizer=optimizer,
-            num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps,
-        )
-
-         # fine tune model
-        writer = SummaryWriter()
-        for epoch in range(num_train_epochs):
-            # Training
-            metrics = {}
-            for i, batch in enumerate(tqdm(train_dataloader, desc="Training")):
-                model.train()
-
-                outputs = model(**batch)
-                loss = outputs.loss
-                accelerator.backward(loss)
-
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-
-                if i > 0 and i % args.eval_steps == 0:
-                    # Evaluation
-                    model.eval()
-                    true_predictions, true_labels = [], []
-                    for batch in tqdm(eval_dataloader, desc="Evaluating"):
-                        with torch.no_grad():
-                            outputs = model(**batch)
-                            eval_loss = outputs.loss
-
-                        predictions = outputs.logits.argmax(dim=-1)
-                        labels = batch["labels"]
-
-                        # Necessary to pad predictions and labels for being gathered
-                        predictions = accelerator.pad_across_processes(predictions, dim=1, pad_index=-100)
-                        labels = accelerator.pad_across_processes(labels, dim=1, pad_index=-100)
-
-                        predictions_gathered = accelerator.gather(predictions)
-                        labels_gathered = accelerator.gather(labels)
-
-                        true_predictions_batch, true_labels_batch = postprocess(predictions_gathered, labels_gathered, id2label)
-                        true_predictions.extend(true_predictions_batch)
-                        true_labels.extend(true_labels_batch)
-                    
-                    metrics = calculate_metrics(true_predictions, true_labels)
-                    
-                    # log to tensorboard
-                    global_time = epoch*len(train_dataloader)+i
-                    writer.add_scalar('train/loss', loss, global_time)
-                    writer.add_scalar('eval/loss', eval_loss, global_time)
-                    for m in ['accuracy', 'f1', 'precision', 'recall']:
-                        writer.add_scalar('eval/{}'.format(m), metrics[m], global_time)
-                    print(
-                        f"epoch {epoch}, step {i}:",
-                        {
-                            key: metrics[key]
-                            for key in ["precision", "recall", "f1", "accuracy"]
-                        },
-                    )
-        # save model
-        output_dir = "model_checkpoint"
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
-        unwrapped_model.save_pretrained(output_dir, save_function=accelerator.save)
-        if accelerator.is_main_process:
-            tokenizer.save_pretrained(output_dir)
-
-        # end of fine-tuning
+    #test
+    test_res = trainer.test(
+        model=model,
+        dataloaders=test_dataloader
+    )
+    

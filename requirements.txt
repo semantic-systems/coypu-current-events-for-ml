@@ -7,3 +7,4 @@ seqeval
 torch
 tqdm
 transformers
+lightning
