@@ -23,6 +23,12 @@ def generate_data_to_link_blink(ds, title2id=None):
         text = x["text"]
         mentions = x["mentions"]
 
+        
+        # handling faulty mentions like:
+        # ".mw-parser-output .tooltip-dotted{border-bottom:1px dotted;cursor:help}Mw"
+        if len(mention) >= 60:
+            continue
+
         # iterate over mentions in the sentence
         left_context = ""
 
