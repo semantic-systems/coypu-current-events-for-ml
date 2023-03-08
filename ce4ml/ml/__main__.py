@@ -54,8 +54,6 @@ if __name__ == '__main__':
     
     parser.add_argument('--learning_rate', action='store', type=float, default=3e-5)
 
-    parser.add_argument('--eval_steps', action='store', type=int, default=200)
-    
     parser.add_argument('--warmup_length', action='store', type=float, default=0.1)
 
     args = parser.parse_args()
@@ -150,17 +148,21 @@ if __name__ == '__main__':
     makedirs(trainer_dir, exist_ok=True)
 
     trainer = pl.Trainer(
-        # accelerator='gpu',
+        accelerator='gpu',
         # devices=[0],
         default_root_dir=trainer_dir,
         callbacks=[model_checkpoint_callback, early_stop_callback],
+        # max_epochs=1,
+        # limit_train_batches=1,
+        # limit_val_batches=1,
+        # limit_test_batches=1,
     )
 
     # train
     trainer.fit(
         model=model, 
         train_dataloaders=train_dataloader,
-        val_dataloaders=eval_dataloader
+        val_dataloaders=eval_dataloader,
     )
     
     # load best model

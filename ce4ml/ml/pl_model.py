@@ -1,7 +1,7 @@
 from typing import List
 
 import lightning as pl
-from torch import stack
+from torch import stack, no_grad
 from torch.optim import AdamW
 from torch.nn.utils.rnn import pad_sequence
 from transformers import AutoModelForTokenClassification, get_scheduler
@@ -34,7 +34,7 @@ class LocationExtractor(pl.LightningModule):
             label2id=self.label2id,
         )
 
-    def forward(self, **inputs):
+    def forward(self, inputs):
         return self.model(**inputs)
 
 
@@ -51,6 +51,7 @@ class LocationExtractor(pl.LightningModule):
         labels = batch["labels"]
 
         return {"loss": val_loss, "predictions": predictions, "labels": labels}
+    
     
     
     def test_step(self, batch, batch_idx):
@@ -119,5 +120,14 @@ class LocationExtractor(pl.LightningModule):
         )
 
         return [optimizer], [{"scheduler": lr_scheduler, "interval": "step", "frequency": 1}]
+    
+    def infer(self, msgs:List[str], tokenizer):
+        input_tensors = tokenizer(msgs, return_tensors="pt")
+        with no_grad():
+            output = self(input_tensors)
+        tokens = input_tensors.tokens()
+        predictions = output.logits.argmax(dim=-1)
+
+        return tokens, predictions
 
 
