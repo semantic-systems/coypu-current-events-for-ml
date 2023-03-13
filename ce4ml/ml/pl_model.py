@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Tuple
 
 import lightning as pl
 from torch import stack, no_grad
 from torch.optim import AdamW
 from torch.nn.utils.rnn import pad_sequence
-from transformers import AutoModelForTokenClassification, get_scheduler
+from transformers import AutoModelForTokenClassification, get_scheduler, BatchEncoding, AutoTokenizer
+from transformers.modeling_outputs import TokenClassifierOutput
 
 from .metrics import calculate_metrics, postprocess
 
@@ -121,13 +122,54 @@ class LocationExtractor(pl.LightningModule):
 
         return [optimizer], [{"scheduler": lr_scheduler, "interval": "step", "frequency": 1}]
     
-    def infer(self, msgs:List[str], tokenizer):
-        input_tensors = tokenizer(msgs, return_tensors="pt")
+    def infer(self, text:str, tokenizer) -> Tuple[List[str], List[int]]:
+        batch_encoding: BatchEncoding = tokenizer(text=text, return_tensors="pt")
+        input_ids = batch_encoding.input_ids
         with no_grad():
-            output = self(input_tensors)
-        tokens = input_tensors.tokens()
+            output: TokenClassifierOutput = self.model.forward(input_ids=input_ids)
+        
+        tokens = batch_encoding.tokens()
         predictions = output.logits.argmax(dim=-1)
 
+        tokens = tokens[1:-1]
+        predictions = predictions[0,:].tolist()[1:-1]
+
         return tokens, predictions
+    
+    def infer_batch(self, msgs:List[str], tokenizer) -> Tuple[List[List[str]], List[List[int]]]:
+        tokens_batch, predictions_batch = [],[]
+        for msg in msgs:
+            tokens, predictions = self.infer(msg, tokenizer)
+            tokens_batch.append(tokens)
+            predictions_batch.append(predictions)
+        return tokens_batch, predictions_batch
+    
 
+    def infer_words(self, words:List[str], tokenizer: AutoTokenizer) -> Tuple[List[str], List[int], List[int]]:
+        batch_encoding: BatchEncoding = tokenizer(
+            text=words, 
+            is_split_into_words=True, 
+            return_tensors="pt"
+        )
+        input_ids = batch_encoding.input_ids
+        with no_grad():
+            output: TokenClassifierOutput = self.model.forward(input_ids=input_ids)
+        
+        tokens = batch_encoding.tokens()
+        predictions = output.logits.argmax(dim=-1)
 
+        tokens = tokens[1:-1]
+        predictions = predictions[0,:].tolist()[1:-1]
+        word_ids = batch_encoding.word_ids()[1:-1]
+
+        return tokens, predictions, word_ids
+    
+    def infer_words_batch(self, words_batch:List[List[str]], 
+            tokenizer: AutoTokenizer)-> Tuple[List[List[str]], List[List[int]], List[List[int]]]:
+        tokens_batch, predictions_batch, word_ids_batch = [],[],[]
+        for words in words_batch:
+            tokens, predictions, word_ids = self.infer_words(words, tokenizer)
+            tokens_batch.append(tokens)
+            predictions_batch.append(predictions)
+            word_ids_batch.append(word_ids)
+        return tokens_batch, predictions_batch, word_ids_batch
