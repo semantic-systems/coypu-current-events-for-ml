@@ -1,0 +1,15 @@
+version: "3"
+services:
+  location_extractor:
+    build: .
+    ports:
+      - "5282:5282"
+    command: "python ce4ml/ml/server.py"
+    volumes:
+      - /data/home/8michael/models/location_extractor/distilbert-location-extractor.ckpt:/usr/src/app/server.ckpt:ro
+    networks:
+      - demo_network
+
+networks:
+  demo_network:
+    external: true
