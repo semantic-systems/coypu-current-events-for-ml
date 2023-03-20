@@ -15,7 +15,7 @@ import argparse
 
 
 # params
-port = 5282
+port = 5283
 model_path = "server.ckpt"
 
 app = Flask(__name__)

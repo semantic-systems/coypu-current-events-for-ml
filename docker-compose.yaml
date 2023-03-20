@@ -3,7 +3,7 @@ services:
   location_extractor:
     build: .
     ports:
-      - "5282:5282"
+      - "5283:5283"
     command: "python ce4ml/ml/server.py"
     volumes:
       - /data/home/8michael/models/location_extractor/distilbert-location-extractor.ckpt:/usr/src/app/server.ckpt:ro
