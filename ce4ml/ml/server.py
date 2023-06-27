@@ -17,6 +17,7 @@ import argparse
 # params
 port = 5283
 model_path = "server.ckpt"
+api_key = '3G65JRDTXW8QV3GJ'
 
 app = Flask(__name__)
 app.register_blueprint(healthz, url_prefix="/healthz")
@@ -38,12 +39,23 @@ location_extractor = LocationExtractor.load_from_checkpoint(model_path)
 location_extractor.eval()
 tokenizer = AutoTokenizer.from_pretrained(location_extractor.hparams.model_name_or_path, use_fast=True)
 
+
+def auth(request) -> bool:
+    if 'key' in request.json and request.json['key'] == api_key:
+        return True
+
+
 @app.route('/text', methods=['POST'])
 def text():
     if not request.json or not 'message' in request.json:
         print(request.json)
-        abort(400)
-
+        response = {'error': 'no valid input'}
+        return jsonify(response), 400
+    
+    if not auth(request):
+        response = {'error': 'no valid API key'}
+        return jsonify(response), 401
+    
     message = request.json['message']
 
     tokens_batch, predictions_batch = location_extractor.infer_batch(message, tokenizer)
@@ -54,11 +66,17 @@ def text():
     }
     return jsonify(response), 200
 
+
 @app.route('/words', methods=['POST'])
 def words():
     if not request.json or not 'message' in request.json:
         print(request.json)
-        abort(400)
+        response = {'error': 'no valid input'}
+        return jsonify(response), 400
+    
+    if not auth(request):
+        response = {'error': 'no valid API key'}
+        return jsonify(response), 401
 
     message = request.json['message']
 
