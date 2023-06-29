@@ -45,48 +45,37 @@ def auth(request) -> bool:
         return True
 
 
-@app.route('/text', methods=['POST'])
-def text():
-    if not request.json or not 'message' in request.json:
-        print(request.json)
-        response = {'error': 'no valid input'}
-        return jsonify(response), 400
-    
+@app.route('/', methods=['POST'])
+def words_or_tokens():
     if not auth(request):
         response = {'error': 'no valid API key'}
         return jsonify(response), 401
     
-    message = request.json['message']
+    if not request.json:
+        response = {'error': 'no valid input'}
+        return jsonify(response), 400
 
-    tokens_batch, predictions_batch = location_extractor.infer_batch(message, tokenizer)
+    if "presplit" in message:
+        presplit_inputs = request.json['presplit']
+        tokens_batch, predictions_batch, word_ids_batch = location_extractor.infer_words_batch(presplit_inputs, tokenizer)
+        response = {
+            'tokens': tokens_batch,
+            'predictions': predictions_batch,
+            'word_ids': word_ids_batch,
+        }
+        
+    elif "text" in message:
+        text_inputs = request.json['text']
+        tokens_batch, predictions_batch = location_extractor.infer_batch(text_inputs, tokenizer)
+        response = {
+            'tokens': tokens_batch,
+            'predictions': predictions_batch,
+        }
     
-    response = {
-        'tokens': tokens_batch,
-        'predictions': predictions_batch,
-    }
-    return jsonify(response), 200
-
-
-@app.route('/words', methods=['POST'])
-def words():
-    if not request.json or not 'message' in request.json:
-        print(request.json)
+    else:
         response = {'error': 'no valid input'}
         return jsonify(response), 400
     
-    if not auth(request):
-        response = {'error': 'no valid API key'}
-        return jsonify(response), 401
-
-    message = request.json['message']
-
-    tokens_batch, predictions_batch, word_ids_batch = location_extractor.infer_words_batch(message, tokenizer)
-    
-    response = {
-        'tokens': tokens_batch,
-        'predictions': predictions_batch,
-        'word_ids': word_ids_batch,
-    }
     return jsonify(response), 200
 
 
