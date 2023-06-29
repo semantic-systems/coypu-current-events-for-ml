@@ -55,7 +55,7 @@ def words_or_tokens():
         response = {'error': 'no valid input'}
         return jsonify(response), 400
 
-    if "presplit" in message:
+    if "presplit" in request.json:
         presplit_inputs = request.json['presplit']
         tokens_batch, predictions_batch, word_ids_batch = location_extractor.infer_words_batch(presplit_inputs, tokenizer)
         response = {
@@ -64,7 +64,7 @@ def words_or_tokens():
             'word_ids': word_ids_batch,
         }
         
-    elif "text" in message:
+    elif "text" in request.json:
         text_inputs = request.json['text']
         tokens_batch, predictions_batch = location_extractor.infer_batch(text_inputs, tokenizer)
         response = {
